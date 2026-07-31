@@ -32,16 +32,6 @@ void displayQRCode(const char* url) {
 
 // WiFiManagerがAPモードに入ったときに呼ばれるコールバック関数
 void configModeCallback(WiFiManager *myWiFiManager) {
-
-    /* TODO
-     * QRコード表示しなくても、WiFiManagerにより「Wi-Fi: M5Stack-AP」に接続するだけでWiFi設定は可能
-     * QRコードは表示せず（関数は他で使用するので残す） 
-     * 案内メッセージも
-     * 「Wi-Fi: M5Stack-AP」に接続してあとはWebページの指示に従うように
-     * の旨の文章に変更（フォントサイズ少し大きめにした方がよいかも）
-     */
-
-
     // 案内メッセージの画面表示（英語のみ・平易な表現）
     M5.Lcd.fillScreen(TFT_BLACK);
     M5.Lcd.setTextColor(TFT_WHITE);
@@ -51,19 +41,24 @@ void configModeCallback(WiFiManager *myWiFiManager) {
     M5.Lcd.setCursor(10, 10);
     M5.Lcd.println("Wi-Fi Setup");
 
-    // 本文
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.setCursor(10, 35);
-    M5.Lcd.println("1. Connect your phone to");
-    M5.Lcd.println("   Wi-Fi: M5Stack-AP");
-    M5.Lcd.setCursor(10, M5.Lcd.getCursorY());          // 項番「1.～」と左揃えにする
-    M5.Lcd.println("2. Scan the QR code below");
-    M5.Lcd.println("   or open this address:");
-    M5.Lcd.println("   http://192.168.4.1");
+    // 本文（フォントサイズを少し大きめに）
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.setCursor(10, 45);
+    M5.Lcd.setTextColor(TFT_WHITE);
+    M5.Lcd.println("1. Connect your phone");
+    M5.Lcd.println("   to Wi-Fi:");
 
-    // 設定用URLの組み立てとQRコード表示
-    String configUrl = "http://" + WiFi.softAPIP().toString();
-    displayQRCode(configUrl.c_str());
+    // SSID名を強調（黄色文字）
+    M5.Lcd.setTextColor(TFT_YELLOW);
+    M5.Lcd.println("   M5Stack-AP");
+
+    // 通常表示に戻して続きを表示
+    M5.Lcd.setTextColor(TFT_WHITE);
+    M5.Lcd.println("");
+    M5.Lcd.setCursor(10, M5.Lcd.getCursorY());          // 項番「1.～」と文頭を揃える
+    M5.Lcd.println("2. Follow the");
+    M5.Lcd.println("   instructions on");
+    M5.Lcd.println("   the web page");
 
     // シリアルモニターへのログ出力
     Serial.println("Entered config mode");
@@ -73,7 +68,7 @@ void configModeCallback(WiFiManager *myWiFiManager) {
 
 void setup() {
     // M5Stack本体の初期化
-    M5.begin();
+    M5.begin();                                         // WiFiManagerの処理よりも前に記述（CoreS3で不具合報告あり）
     M5.Power.begin();
 
     // 起動時の画面表示
