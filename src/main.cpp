@@ -1,10 +1,12 @@
-#include <M5Stack.h>
+#include <M5Unified.h>
 #include <WiFi.h>
 #include <DNSServer.h>
 #include <WebServer.h>
-#include <WiFiManager.h>
 #include <qrcode.h>
+#include "wifi_handler.h"
 
+/*
+使用するQRコード描画ライブラリを変更したため、下記記述も書き換える
 // QRコードをM5Stackの画面中央付近に描画する関数
 void displayQRCode(const char* url) {
     // QRコードデータの生成（バージョン3・誤り訂正レベルLOW）
@@ -29,7 +31,10 @@ void displayQRCode(const char* url) {
         }
     }
 }
+*/
 
+/*
+WiFiManagerライブラリの使用を廃止したため、下記コードも書き換える
 // WiFiManagerがAPモードに入ったときに呼ばれるコールバック関数
 void configModeCallback(WiFiManager *myWiFiManager) {
     // 案内メッセージの画面表示（英語のみ・平易な表現）
@@ -65,32 +70,42 @@ void configModeCallback(WiFiManager *myWiFiManager) {
     Serial.print("AP IP: ");
     Serial.println(WiFi.softAPIP());
 }
+*/
 
 void setup() {
     // M5Stack本体の初期化
-    M5.begin();                                         // WiFiManagerの処理よりも前に記述（CoreS3で不具合報告あり）
+    // 起動の高速化および省電力化のため使用しない機能を明示的に無効化する
+    auto cfg = M5.config();
+    cfg.internal_imu = false;                           // 加速度センサー無効化
+    cfg.internal_mic = false;                           // マイク無効化
+    cfg.internal_spk = false;                           // スピーカー無効化（ブザー通知は現状使用しない想定）
+
+    /*
+        Wi-Fi関連処理よりも先に記述すること
+        （CoreS3でウォッチドッグタイマーによるリセットがかかりフリーズする既知の現象を回避）
+    */
+    M5.begin(cfg);
     M5.Power.begin();
 
-    // 起動時の画面表示
-    M5.Lcd.fillScreen(TFT_BLACK);
-    M5.Lcd.setTextColor(TFT_GREEN);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.println("Starting Wi-Fi Tracker...");
+    initWiFi();
 
-    // WiFiManagerのインスタンスを生成し、APモード時のコールバックを登録
-    WiFiManager wm;
-    wm.setAPCallback(configModeCallback);
+/*
+WiFiManagerの使用は廃止
+*/
+    // // WiFiManagerのインスタンスを生成し、APモード時のコールバックを登録
+    // WiFiManager wm;
+    // wm.setAPCallback(configModeCallback);
 
-    // 保存済みのWi-Fi情報で自動接続を試行（失敗時はAPモードへ移行）
-    if (!wm.autoConnect("M5Stack-AP")) {
-        Serial.println("Failed to connect and hit timeout");
-        M5.Lcd.fillScreen(TFT_RED);
-        M5.Lcd.setTextColor(TFT_WHITE);
-        M5.Lcd.setCursor(10, 100);
-        M5.Lcd.println("Connection Failed.");
-        delay(3000);
-        ESP.restart();
-    }
+    // // 保存済みのWi-Fi情報で自動接続を試行（失敗時はAPモードへ移行）
+    // if (!wm.autoConnect("M5Stack-AP")) {
+    //     Serial.println("Failed to connect and hit timeout");
+    //     M5.Lcd.fillScreen(TFT_RED);
+    //     M5.Lcd.setTextColor(TFT_WHITE);
+    //     M5.Lcd.setCursor(10, 100);
+    //     M5.Lcd.println("Connection Failed.");
+    //     delay(3000);
+    //     ESP.restart();
+    // }
 
     // Wi-Fi接続成功時の画面表示
     M5.Lcd.fillScreen(TFT_BLACK);
@@ -108,5 +123,11 @@ void setup() {
 
 void loop() {
     M5.update();
+
+    if (isWiFiConnected())
+    {
+        /* TODO : 処理内容をここに記述 */
+    }
+    
     // 今後のステップ（ボタン押下時のAirLabs APIリクエスト等）をここに実装
 }
