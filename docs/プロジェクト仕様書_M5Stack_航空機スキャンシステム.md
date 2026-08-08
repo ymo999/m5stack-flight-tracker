@@ -1,6 +1,6 @@
 # プロジェクト仕様書：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-08**
+**更新日時：2026-08-09**
 
 本仕様書は、M5Stack（ESP32）を使用した「位置情報を基準にした周辺航空機のライブスキャンシステム」の開発プロジェクト仕様をまとめたものである。
 APIとして「AirLabs API」を採用し、Wi-Fi接続のハードコーディング回避策やデバイス上でのパース・表示処理について定義する。
@@ -2268,6 +2268,7 @@ Your-Project-Folder/
 │   └── state_machine.h     // 状態管理関連の定義・関数宣言
 ├── src/
 │   ├── main.cpp            // メイン（setup, loop のみ）
+│   ├── flight_data.cpp     // FlightData関連グローバル変数の実体定義
 │   ├── airline_dict.cpp    // 航空会社辞書データ・二分探索処理（5.3.1参照）
 │   ├── wifi_handler.cpp
 │   ├── web_handler.cpp
