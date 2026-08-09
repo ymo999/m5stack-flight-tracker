@@ -1,6 +1,7 @@
-/*
-    機体データの変数定義
-*/
+/**
+ * flight_data.cpp
+ * 機体データの変数定義
+ */
 #include "flight_data.h"
 
 // グローバル変数の実体定義（宣言はflight_data.h参照）

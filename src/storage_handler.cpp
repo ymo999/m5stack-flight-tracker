@@ -1,6 +1,10 @@
-/*
-    保存処理の実装（NVS／LittleFS+JSON）
-    書き込み、読み込み処理の戻り値は成否（bool）
+/**
+ * storage_handler.cpp
+ * 保存処理の実装（NVS／LittleFS+JSON）
+ * 書き込み、読み込み処理の戻り値は成否（bool）
+ * 秘匿性が高いものはNVS、それ以外のものはLittleFS+JSONへ書き込む
+ * ※本来ならばNVS暗号化＆フラッシュ暗号化で秘匿性を担保すべきだが、
+ * 要件上そこまでのセキュリティは求めていないので、単純にNVSへの書き込みのみとする
 */
 
 #include "storage_handler.h"
@@ -8,9 +12,12 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 
-// NVS名前空間ごとのPreferencesインスタンス
-// Preferences...NVSへキー・バリュー形式でデータを読み書きするためのAPI
-// ESP32標準ライブラリが提供するクラス）
+/**
+ * NVS名前空間ごとのPreferencesインスタンス
+ * Preferences...NVSへキー・バリュー形式でデータを読み書きするためのAPI
+ * （ESP32標準ライブラリが提供するクラス）
+ * 消去のタイミングが異なるため、名前空間を別にして丸ごと消去できるようにしている
+ */
 Preferences wifiPrefs;                      // Wi-Fi資格情報
 Preferences apiPrefs;                       // APIキー
 
@@ -168,11 +175,17 @@ void clearConfig() {
 // 機体情報キャッシュ・残りリクエスト数（LittleFS + JSON、cache.json）
 // ============================================================
 
-// キャッシュ保存
+/**
+ * キャッシュ保存（レスポンスJSONを解析して配列にセットされた値をキャッシュに保存する）
+ * 残リクエスト数も同じタイミングでキャッシュに保存する（書き込み回数低減のため）
+ * データコピーの手間を軽減するため配列はポインタで受け取る
+ * この関数では配列の値を読み取るだけで書き換えないため、const修飾子を付加している（loadCacheは書き込みを行うため付加しない）
+*/
 bool saveCache(const FlightData flights[], int flightCount, int remainingRequests) {
     JsonDocument doc;
     doc["remainingRequests"] = remainingRequests;
 
+    // flightCount（機体数）の分ループし、機体データ（ポインタ経由で参照）をJSON配列に1機ずつセット
     JsonArray flightArray = doc["flights"].to<JsonArray>();
     for (int i = 0; i < flightCount; i++) {
         JsonObject f = flightArray.add<JsonObject>();
@@ -200,7 +213,11 @@ bool saveCache(const FlightData flights[], int flightCount, int remainingRequest
     return true;
 }
 
-// キャッシュ読み込み
+/**
+ * キャッシュ読み込み（キャッシュから取り出した値を、呼び出し元の配列にセットする）
+ * 配列はポインタ、件数・残リクエスト数は参照で受け取ることでコピーの手間を防ぐ
+ * 残リクエスト数は、書き込み回数低減のためキャッシュと同時に記録している
+ */
 bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests) {
     File file = LittleFS.open(CACHE_PATH, "r");
     if (!file) {

@@ -1,6 +1,8 @@
-/*
-    NVS/LittleFSへの保存・読み込み関連の関数宣言
-*/
+/**
+ * storage_handler.h
+ * NVS/LittleFSへの保存・読み込み関連の関数宣言
+ */
+
 #ifndef STORAGE_HANDLER_H           // インクルードガード（二重定義防止）
 #define STORAGE_HANDLER_H
 

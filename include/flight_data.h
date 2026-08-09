@@ -1,6 +1,8 @@
-/*
-    航空機データ構造体・定数定義
-*/
+/**
+ * flight_data.h
+ * 航空機データ構造体・定数定義
+ */
+
 #ifndef FLIGHT_DATA_H                   // インクルードガード（二重定義防止）
 #define FLIGHT_DATA_H
 
