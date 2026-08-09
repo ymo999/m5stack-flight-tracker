@@ -189,6 +189,8 @@ AirLabsから返却されるJSONデータから、以下のキーをパースし
 ※構造体名は当初`AircraftData`としていたが、画面表記（`FLIGHT_VIEW`、`No flights found.`）およびファイル名（`flight_data.h`、7.1参照）との一貫性を優先し、`FlightData`に変更した。関連する変数名（`foundFlights`、`totalFlightCount`）も同様に統一している。
 
 ```cpp
+#define MAX_FLIGHT_COUNT 10   // 保持する機体データの上限
+
 struct FlightData {
     String callsign;      // 便名（flight_icao。取得できない場合はflight_iataをフォールバック）
     String flightIcao;    // 便名ICAOコード（FlightAware用URL生成に使用）
@@ -203,7 +205,7 @@ struct FlightData {
     String squawk;          // スコーク（レスポンスに含まれない場合は空文字。5.4参照）
 };
 
-FlightData foundFlights[10];
+FlightData foundFlights[MAX_FLIGHT_COUNT];
 int totalFlightCount = 0;
 int currentDisplayIndex = 0;
 ```
@@ -222,6 +224,19 @@ aircraft.dist = TinyGPSPlus::distanceBetween(baseLat, baseLng, lat, lng) / 1000.
 ```
 
 ※将来的に「基準地点から見た機体の方角表示」「簡易レーダー表示」「基準地点変更時のキャッシュ再計算」等の機能を追加する場合は、座標の保持が必要になる。
+
+**欠損値の内部表現ルール：**
+
+APIレスポンスに該当データが含まれない場合、`FlightData`構造体の各メンバーは以下の値で欠損を表現する。
+
+| 項目種別 | 対象項目 | 欠損時の値 | 理由 |
+|---|---|---|---|
+| 文字列 | `callsign`, `flightIcao`, `airlineIcao`, `from`, `to`, `type`, `squawk` | 空文字`""` | 表示側でプレースホルダ（`---`）に変換する（5.4参照） |
+| 数値（例外） | `alt`, `speed`, `heading` | `-1` | `0`が地上停止・低速走行・真北等の**正常値**でありうるため、欠損と区別する必要がある |
+
+* `alt`：2.2節に記載の「取得できない(null/0)場合のエラー処理が必要」という要求を、この`-1`センチネル方式で具体化したもの。
+* `speed`：`alt`と同様、地上停止・低速走行時に`0`が正常値として発生しうるため、同方式を採用する。
+* `heading`：`0`度（真北）は正常値のため、`-1`を欠損値とする。
 
 ### 2.3.1 距離・方位の計算方法
 
@@ -252,6 +267,30 @@ APIリクエスト回数（無料枠：月1,000回）を節約するため、直
 * **キャッシュが無い場合**：初回起動時など、キャッシュが存在しない場合のみ新規にAPIリクエストを実行する。
 * **キャッシュの更新**：ユーザーが手動で再取得操作（5.2参照）を行った場合、新規取得したデータでキャッシュを上書きする。
 * **保存方式**：**LittleFS + JSON**（`bblanchon/ArduinoJson`を使用）に保存する。取得地点情報（4.3参照）と同様の方式であり、**同じ`ArduinoJson`ライブラリで読み書きできる**（AirLabs APIのレスポンス解析にも同ライブラリを使用しているため、新たな解析処理を追加せずに済む）。機体情報はセキュリティ上重要度が低いデータであるため、NVS（非公開領域）ではなくLittleFS上にテキスト形式で保存する方針とする。データ量は最大10機分でも1KB未満であり、パフォーマンス上NVSを用いる必然性はない。
+
+**関数インターフェースの設計方針：**
+
+保存・読み込み処理は、データ種別ごとに個別の関数を用意する方式とする（Wi-Fi資格情報／APIキー／設定値／機体情報キャッシュをそれぞれ個別関数化）。
+
+* `saveWifiCredentials()` / `loadWifiCredentials()` / `clearWifiCredentials()`
+* `saveApiKey()` / `loadApiKey()` / `clearApiKey()`
+* `saveConfig()` / `loadConfig()` / `clearConfig()`
+* `saveCache()` / `loadCache()` / `clearCache()`
+
+静的IP設定・取得地点・SCAN RANGEは、以下の`ConfigData`構造体にまとめて`config.json`と対応させる。
+
+```cpp
+struct ConfigData {
+    bool useStaticIp;   // true: 静的IP, false: DHCP
+    String staticIp;    // M5Stack自身のIP
+    String gateway;     // ゲートウェイ
+    String subnet;      // サブネットマスク
+    String dns;         // DNSサーバー（未入力時はgatewayを流用）
+    double lat;          // 取得地点：緯度
+    double lng;          // 取得地点：経度
+    String scanRange;    // "NARROW" または "WIDE"
+};
+```
 
 ### 2.4.1 保存ファイルの分割とフラッシュ書き込み回数の低減
 
@@ -300,6 +339,10 @@ file.close();
 * **将来的な選択肢**：書き込み回数が問題となる場合、`cache.json`のみmicroSDへ移すことも可能（追加工数8〜13時間の見込み）。ただしHTMLファイルは、SDカード未挿入時に設定画面を開けなくなり復旧不能となるため、LittleFSに残す必要がある。
 
 * **実装の詳細**（保存先ファイル名、JSON構造等）は実装時に確定する。
+
+**書き込み失敗時の扱い：**
+
+`config.json` / `cache.json`への書き込みが失敗した場合（`LittleFS.open()`の失敗等）、専用のエラー画面は新設しない。`Serial.println()`によるログ出力と、保存関数の戻り値`false`判定のみで対応する（納期を優先した判断）。
 
 ### 2.5 残りリクエスト数の保持
 
@@ -482,6 +525,12 @@ WiFi.softAPdisconnect(true);
 | SSID / パスワード | **NVS（Preferences）** | ソースコードへの直接記述（ハードコーディング）を避け、NVS領域に保存する。通常のプログラム経由では値が露出しない形とするが、フラッシュの物理的な解析等に対する完全な秘匿（NVS暗号化・フラッシュ暗号化）までは本プロジェクトの要件としない |
 | APIキー | **NVS（Preferences）** | 同上（3.4参照） |
 | 静的IP設定（IP/Gateway/Subnet/DNS） | **LittleFS + JSON** | 秘匿性が低く、デバッグ時に設定値を確認できる方が有用（3.7参照） |
+
+**NVS名前空間の分離：**
+
+Wi-Fi資格情報とAPIキーは、NVS上で名前空間を分離して保存する（`wifi` / `api`）。
+
+* **理由**：`Preferences::clear()`は名前空間単位での全消去となるため、名前空間を分けておくことで、Wi-Fi再設定時（3.1.1参照）にAPIキーを残したまま、Wi-Fi資格情報のみを消去することができる。
 
 ### 3.4 APIキー登録仕様
 
@@ -2393,6 +2442,7 @@ build_flags =
 * `_view=array`の採用可否（実測でフィールド欠損時の項目ずれの有無を確認）
 * SCAN RANGE選択画面をどの`SystemMode`で扱うか
 * 航空会社辞書の収録件数（実測ログに基づき判断）
+* `M5Stack-AP`（Wi-Fi資格情報登録用）のオープンネットワーク運用（3.2参照）：現状は認証なしで誰でも接続可能。①APが立つのは短時間のみ、②侵入されても実害はWi-Fi設定の誤書き込み程度、という理由から本プロジェクトでは対応不要と判断しているが、今後の課題として認識しておく
 
 ## 9. 注釈・参考文献
 [^1]: QRコードは株式会社デンソーウェーブの登録商標です。
