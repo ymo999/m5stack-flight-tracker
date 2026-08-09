@@ -861,6 +861,7 @@ M5Stack Basicの16MBフラッシュに対し、LittleFS領域は約1.5MB程度�
 ## 5. 画面表示・操作仕様
 
 本章は、Figmaによる画面設計（32フレーム）・画面遷移設計（52遷移）の完了内容に基づく確定仕様である。
+<img width="3920" height="2040" alt="Image" src="https://github.com/user-attachments/assets/ae5109f9-59a1-46e9-8f3d-6ccb9d98c0da" />
 
 ### 5.0 画面設計方針
 
