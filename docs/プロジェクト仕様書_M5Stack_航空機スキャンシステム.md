@@ -1007,9 +1007,7 @@ void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC
 
 ※旧仕様ではBtnAを「簡易⇔詳細表示の切替」に割り当てていたが、5.3の変更（簡易／詳細表示の一本化）に伴い、BtnAは「前の機体の表示（PREV）」に役割を変更した。これによりBtnA/BtnBで前後双方向に機体を送れるようになる。
 
-### 5.3 機体情報表示の内容（簡易⇔詳細表示の一本化）
-
-**方針確定（暫定）：案A採用**（「99_プロジェクト全体を通じた質問と相談」での決定事項）
+### 5.3 機体情報表示の内容
 
 * **周辺機体スキャン（一覧）**：`bbox`指定のAirLabs APIリクエストにより、一覧表示用に複数機を取得する（2章参照）。
 * **詳細情報の取得方法**：ICAOコード指定でのAPI再コールは行わない。選択した機体の発着予定・実績時刻等の詳細情報は、**FlightAwareのWebページ**（`https://ja.flightaware.com/live/flight/{ICAOコード}`）で確認する方式とする。
