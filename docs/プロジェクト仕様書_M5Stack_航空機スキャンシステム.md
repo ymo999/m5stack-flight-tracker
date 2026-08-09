@@ -2140,6 +2140,10 @@ bool connectWiFiWithTimeout(unsigned long timeoutMs) {
 * APIキー設定ページ（`api_key.html`）
 * 基準地点設定ページ（`location.html`）
 
+**Webページ内での使い分け（本チャットで確定）：**
+* UIラベル・見出し（`NETWORK NAME (SSID)`等のシステム的な項目名）→ 英語
+* 利用者への説明文・選択肢・補足（実際に読んで判断する内容）→ 日本語
+
 **英語表記とする箇所（M5Stack画面側）：**
 * 各画面のタイトル（`SETTINGS`、`ERROR`、`Wi-Fi SETUP`等）
 * ボタンラベル（`PREV` / `NEXT` / `SET`、`BACK` / `DOWN` / `SELECT`等）
