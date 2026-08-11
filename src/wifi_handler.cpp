@@ -184,3 +184,18 @@ void resetAndEnterAPMode() {
     //    enterAPMode()冒頭でWiFi.config()による実行中IP設定のクリアも行われるため、ここでの個別呼び出しは不要
     enterAPMode();
 }
+
+// ============================================================
+// Wi-Fi電源管理（低消費電力運用）
+// ============================================================
+// Wi-Fiを有効化する（ステーションモードへ切り替え）
+// 接続自体はhandleWiFiSetup()等の呼び出し元が別途行う
+void enableWiFi() {
+    WiFi.mode(WIFI_STA);
+}
+
+// Wi-Fiを無効化する
+// 通信不要時はOFFにし、低消費電力運用を行う
+void disableWiFi() {
+    WiFi.mode(WIFI_OFF);
+}

@@ -50,4 +50,10 @@ bool isWiFiConnected();
 // 異なるネットワークへの切り替えフロー専用（確認ダイアログでCONFIRMされた後、state_machine.cpp側から呼び出される想定）
 void resetAndEnterAPMode();
 
+// Wi-Fiを有効化する（ステーションモードへ切り替え。接続自体はhandleWiFiSetup()等が別途行う）
+void enableWiFi();
+
+// Wi-Fiを無効化する（低消費電力運用のため、通信不要時はOFFにする）
+void disableWiFi();
+
 #endif
