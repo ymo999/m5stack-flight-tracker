@@ -519,7 +519,7 @@ APモード移行時、スマートフォン等が「M5Stack-AP」に接続す�
 DNSServer dnsServer;
 WebServer server(80);   // HTTPのみ。HTTPSは扱わない
 
-void startCaptivePortal() {
+void enterAPMode() {
     WiFi.softAP("M5Stack-AP");
 
     // 全ドメインへのDNS問い合わせに自機IPを返す
@@ -550,9 +550,11 @@ void loop() {
 
 ```cpp
 // 設定完了後のAP停止処理
-dnsServer.stop();
-server.stop();
-WiFi.softAPdisconnect(true);
+void exitAPMode() {
+    dnsServer.stop();
+    server.stop();
+    WiFi.softAPdisconnect(true);
+}
 ```
 
 * DNSServerが応答するのはM5Stack-APに接続した端末のみであり、他のネットワーク上の端末に影響を与えることはない。
@@ -2408,7 +2410,7 @@ graph TD
 * 実線：既に実装・確定済みの呼び出し関係
 * 破線：未実装で、仕様書の記述から見込まれる想定関係。実装時に変わる可能性がある
 
-**補足：** `wifi_handler.cpp`と`web_handler.cpp`の関係は、通常の`#include`による関数呼び出しではなく、`WebServer server(80)`インスタンスを`wifi_handler.cpp`側で定義し、`web_handler.cpp`側で`extern WebServer server;`により共有する形になっている（他の関係と実装方式が異なる点に留意）。
+**補足：** `wifi_handler.cpp`と`web_handler.cpp`の関係は、通常の`#include`による関数呼び出しではなく、`WebServer server(80)`インスタンスを`wifi_handler.cpp`側で定義し、`wifi_handler.h`に`extern WebServer server;`を宣言することで、`web_handler.cpp`側は`#include "wifi_handler.h"`のみで共有できる形になっている（`wifiRetryCount`と同じ共有パターン）。
 
 ### 7.2 platformio.ini（依存ライブラリ）
 

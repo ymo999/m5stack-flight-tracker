@@ -3,11 +3,14 @@
  * Wi-Fi接続・APモード・キャプティブポータル関連機能
  */
 
-#include <WiFi.h>
+#include "wifi_handler.h"
+
 #include <DNSServer.h>
 #include <WebServer.h>
+#include <WiFi.h>
+
+#include "storage_handler.h"
 #include "web_handler.h"
-#include "wifi_handler.h"
 
 // APモード・キャプティブポータルで使用するインスタンス
 DNSServer dnsServer;
@@ -21,7 +24,12 @@ int wifiRetryCount = 0;
 // ============================================================
 // APモード＋キャプティブポータルの起動
 // ============================================================
-void startCaptivePortal() {
+void enterAPMode() {
+
+    // APモード移行
+    // APモードへ移行する前に静的IP設定をクリアする
+    // （直前まで静的IP接続していた場合、内部ルーティングテーブルが競合するため）
+    WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
     WiFi.softAP("M5Stack-AP");                      // アクセスポイント名 : M5Stack-AP
 
     // 全ドメインへのDNS問い合わせには自機のIPアドレスを返す
@@ -66,21 +74,92 @@ void handleCaptivePortal() {
 // ============================================================
 // APモード・キャプティブポータルの終了
 // ============================================================
-void stopCaptivePortal() {
+void exitAPMode() {
     dnsServer.stop();                               // ポート53番を閉じstart()で確保したリソースを解放
     server.stop();                                  // ポート80番を閉じる
     WiFi.softAPdisconnect(true);                    // APモード終了
 }
 
 // ============================================================
-// 以下、他手順（手順8等）で実装予定の関数（現状はTODOのまま維持）
+// 起動時のWi-Fi接続判定（登録あり→接続試行、未登録→APモード起動）
 // ============================================================
 void initWiFi() {
-    /* TODO : 処理内容の記述（wifiRetryCountのインクリメント処理を含む、3.1.2参照） */
+    String ssid, password;
+
+    if (loadWifiCredentials(ssid, password)) {
+        // 登録あり：保存済み情報で接続試行
+        handleWiFiSetup();
+    } else {
+        // 未登録：APモードへ移行
+        //  ※移行前の静的IP設定クリアは、そもそもこの時点で
+        //  　接続試行そのものを行っていないため、WiFi.config()による
+        //  　クリアは不要（静的IPが適用されるのはhandleWiFiSetup()内のみ）
+        enterAPMode();
+    }
 }
 
-void handleWiFiSetup() {
-    /* TODO : 処理内容の記述 */
+// ============================================================
+// 保存済みの資格情報・ネットワーク設定で、1回分の接続試行を行う
+// ============================================================
+bool handleWiFiSetup() {
+    // ------------------------------------------------------
+    // 1. 保存済みの資格情報・ネットワーク設定を読み込む
+    // ------------------------------------------------------
+    String ssid, password;
+    loadWifiCredentials(ssid, password);
+
+    ConfigData config;
+    loadConfig(config);
+
+    // ------------------------------------------------------
+    // 2. 静的IP選択時は、WiFi.begin()より前に適用する
+    // ------------------------------------------------------
+    if (config.useStaticIp) {
+        IPAddress ip, gateway, subnet, dns;
+        ip.fromString(config.staticIp);
+        gateway.fromString(config.gateway);
+        subnet.fromString(config.subnet);
+        dns.fromString(config.dns);
+
+        WiFi.config(ip, gateway, subnet, dns);
+    }
+
+    // ------------------------------------------------------
+    // 3. 接続試行
+    // ※ Arduino独自の文字列クラスであるStringを、C言語形式の文字列（const char*）に変換
+    // ------------------------------------------------------
+    WiFi.begin(ssid.c_str(), password.c_str());
+
+    // ------------------------------------------------------
+    // 4. タイムアウトまでポーリングして待つ
+    // ------------------------------------------------------
+    unsigned long startTime = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - startTime < WIFI_CONNECT_TIMEOUT_MS) {
+        delay(100);
+    }
+
+    bool connected = (WiFi.status() == WL_CONNECTED);
+
+    // ------------------------------------------------------
+    // 5. 接続成功時、静的IPならDNSを再適用する
+    //    WiFi.config()で静的IPを設定してからWiFi.begin()で接続しても、
+    //    DNS情報が正しく反映されない場合があるという既知の不具合への対処
+    // ------------------------------------------------------
+    if (connected && config.useStaticIp) {
+        IPAddress ip, gateway, subnet, dns;
+        ip.fromString(config.staticIp);
+        gateway.fromString(config.gateway);
+        subnet.fromString(config.subnet);
+        dns.fromString(config.dns);
+
+        WiFi.config(ip, gateway, subnet, dns);
+        delay(100);   // DNS設定の反映を待つ
+    }
+
+    // ------------------------------------------------------
+    // 6. 成否を返す
+    // ------------------------------------------------------
+    return connected;
 }
 
 bool isWiFiConnected() {

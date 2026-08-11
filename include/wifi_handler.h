@@ -8,6 +8,9 @@
 
 #include <WebServer.h>
 
+// Wi-Fi接続試行のタイムアウト（ミリ秒）
+#define WIFI_CONNECT_TIMEOUT_MS 10000
+
 // wifi_handler.cpp で定義されているWebServerインスタンスを共有する
 extern WebServer server;
 
@@ -33,9 +36,14 @@ void handleCaptivePortal();
 // ・WiFi.softAPdisconnect(true)
 void stopCaptivePortal();
 
-// 関数宣言
+// 起動時のWi-Fi接続判定（登録あり→接続試行、未登録→APモード起動）
 void initWiFi();
-void handleWiFiSetup();
+
+// 保存済みの資格情報・ネットワーク設定で、1回分の接続試行を行う
+// 戻り値: true = 接続成功、false = 接続失敗
+// RETRY・機体情報再取得時の再接続等、複数の呼び出し元から呼び出される想定
+bool handleWiFiSetup();
+
 bool isWiFiConnected();
 
 #endif
