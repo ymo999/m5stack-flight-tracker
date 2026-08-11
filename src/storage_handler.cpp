@@ -8,9 +8,10 @@
 */
 
 #include "storage_handler.h"
-#include <Preferences.h>
-#include <LittleFS.h>
+
 #include <ArduinoJson.h>
+#include <LittleFS.h>
+#include <Preferences.h>
 
 /**
  * NVS名前空間ごとのPreferencesインスタンス

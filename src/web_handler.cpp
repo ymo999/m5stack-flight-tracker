@@ -3,12 +3,14 @@
  * Webサーバー・設定ページ配信関連の実装
  */
 
-#include <WiFi.h>
-#include <WebServer.h>
-#include <LittleFS.h>
 #include "web_handler.h"
-#include "wifi_handler.h"
+
+#include <LittleFS.h>
+#include <WebServer.h>
+#include <WiFi.h>
+
 #include "storage_handler.h"
+#include "wifi_handler.h"
 
 // ============================================================
 // 初回設定ページの配信（GET "/"）
