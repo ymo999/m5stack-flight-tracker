@@ -42,7 +42,7 @@ void startCaptivePortal() {
 /**
  * dnsServer.processNextRequest()
  *  1. DNS要求が届いているか確認
- *  2. 届いていたらdnsServer.start()で渡した対象ドメインに一致するかチェック
+ *  2. 届いていたらdnsServer.start()で渡した対象ドメインに一致するかチェック（全ドメイン"*"を対象にするので常にtrue）
  *  3. 一致していたらdnsServer.start()で渡したIPアドレスを返す
  * 
  * server.handleClient()
