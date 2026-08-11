@@ -1,6 +1,6 @@
 # プロジェクト仕様書：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-09**
+**更新日時：2026-08-11**
 
 本仕様書は、M5Stack（ESP32）を使用した「位置情報を基準にした周辺航空機のライブスキャンシステム」の開発プロジェクト仕様をまとめたものである。
 APIとして「AirLabs API」を採用し、Wi-Fi接続のハードコーディング回避策やデバイス上でのパース・表示処理について定義する。
@@ -861,7 +861,6 @@ M5Stack Basicの16MBフラッシュに対し、LittleFS領域は約1.5MB程度�
 ## 5. 画面表示・操作仕様
 
 本章は、Figmaによる画面設計（32フレーム）・画面遷移設計（52遷移）の完了内容に基づく確定仕様である。
-<img width="3920" height="2040" alt="Image" src="https://github.com/user-attachments/assets/ae5109f9-59a1-46e9-8f3d-6ccb9d98c0da" />
 
 ### 5.0 画面設計方針
 
@@ -1007,7 +1006,9 @@ void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC
 
 ※旧仕様ではBtnAを「簡易⇔詳細表示の切替」に割り当てていたが、5.3の変更（簡易／詳細表示の一本化）に伴い、BtnAは「前の機体の表示（PREV）」に役割を変更した。これによりBtnA/BtnBで前後双方向に機体を送れるようになる。
 
-### 5.3 機体情報表示の内容
+### 5.3 機体情報表示の内容（簡易⇔詳細表示の一本化）
+
+**方針確定（暫定）：案A採用**（「99_プロジェクト全体を通じた質問と相談」での決定事項）
 
 * **周辺機体スキャン（一覧）**：`bbox`指定のAirLabs APIリクエストにより、一覧表示用に複数機を取得する（2章参照）。
 * **詳細情報の取得方法**：ICAOコード指定でのAPI再コールは行わない。選択した機体の発着予定・実績時刻等の詳細情報は、**FlightAwareのWebページ**（`https://ja.flightaware.com/live/flight/{ICAOコード}`）で確認する方式とする。
@@ -2333,6 +2334,42 @@ Your-Project-Folder/
 
 ※`html_pages.h`（PROGMEM埋め込み方式）は廃止し、HTMLは`data/`配下に配置する（4.4参照）。
 ※WiFiManagerを使用せず自前実装とする方針（3.0参照）に伴い、Webサーバー・キャプティブポータル関連の処理量が増えるため、`web_handler`および`storage_handler`を分離する構成とした。
+
+### 7.1.1 ソースファイル間の連携（想定図）
+
+`src/`配下の各`.cpp`ファイルが、どのファイルの機能を呼び出すかを示した想定図である。**実装が確定した部分（実線）と、まだ未実装で仕様書の記述から見込まれる想定にとどまる部分（破線）を区別している**。各手順の実装完了時に、都度この図を更新すること。
+
+```mermaid
+graph TD
+    main[main.cpp]
+    wifi[wifi_handler.cpp]
+    web[web_handler.cpp]
+    storage[storage_handler.cpp]
+    flight[flight_data.cpp]
+    api[api_handler.cpp<br/>※未実装]
+    ui[ui_handler.cpp<br/>※未実装]
+    state[state_machine.cpp<br/>※未実装]
+    dict[airline_dict.cpp<br/>※未実装]
+
+    main -->|initWiFi等を呼び出し| wifi
+    wifi -.->|WebServerインスタンスをextern共有| web
+    web -->|saveWifiCredentials等を呼び出し| storage
+    storage -->|FlightData構造体を参照| flight
+
+    main -.->|SystemModeに応じて分岐<br/>（想定）| state
+    state -.->|各モードのハンドラを呼び出し<br/>（想定）| ui
+    state -.->|データ取得タイミングで呼び出し<br/>（想定）| api
+    api -.->|取得結果を格納<br/>（想定）| flight
+    api -.->|キャッシュ・APIキー読込<br/>（想定）| storage
+    ui -.->|表示データ参照<br/>（想定）| flight
+    ui -.->|航空会社名変換<br/>（想定）| dict
+```
+
+**凡例：**
+* 実線：既に実装・確定済みの呼び出し関係
+* 破線：未実装で、仕様書の記述から見込まれる想定関係。実装時に変わる可能性がある
+
+**補足：** `wifi_handler.cpp`と`web_handler.cpp`の関係は、通常の`#include`による関数呼び出しではなく、`WebServer server(80)`インスタンスを`wifi_handler.cpp`側で定義し、`web_handler.cpp`側で`extern WebServer server;`により共有する形になっている（他の関係と実装方式が異なる点に留意）。
 
 ### 7.2 platformio.ini（依存ライブラリ）
 
