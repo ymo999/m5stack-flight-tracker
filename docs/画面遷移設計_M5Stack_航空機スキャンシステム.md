@@ -1,6 +1,6 @@
 # 画面遷移設計：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-08**
+**更新日時：2026-08-11**
 
 本ドキュメントは、Figmaで作成したプロトタイプから抽出した画面遷移を、Mermaid形式の状態遷移図としてまとめたものである。実装時（`state_machine.cpp`）の参照資料として使用する。
 
@@ -29,10 +29,13 @@ stateDiagram-v2
     QR_LOCATION_INIT --> LOADING_WIFI_REFRESH : 自動（基準地点登録完了）
     LOADING_WIFI_REFRESH --> [*] : 通常操作フローへ
 
+    WIFI_FAILED_INIT --> LOADING_WIFI_INIT : RETRY [BtnC]（リトライ上限内）
+    WIFI_FAILED_INIT --> WIFI_SETUP_INIT : BACK [BtnA]（リトライ上限到達後）
+
     WIFI_SETUP_INIT : WIFI_SETUP_INIT<br>AP接続案内
     LOADING_WIFI_INIT : LOADING_VIEW_WIFI_SETUP_INIT<br>接続中
     WIFI_SUCCESS_INIT : WIFI_SETUP_SUCCESS_INIT<br>接続成功（SSID/IP/MAC）
-    WIFI_FAILED_INIT : WIFI_SETUP_FAILED_INIT<br>接続失敗
+    WIFI_FAILED_INIT : WIFI_SETUP_FAILED_INIT<br>接続失敗（RETRY/BACK出し分け）
     QR_APIKEY_INIT : QR_VIEW_APIKEY_INIT<br>APIキー設定（ボタンなし）
     QR_LOCATION_INIT : QR_VIEW_LOCATION_INIT<br>基準地点設定（ボタンなし）
 ```
@@ -40,7 +43,7 @@ stateDiagram-v2
 **補足**
 * `QR_VIEW_*_INIT`にはボタンを設けない。APIキー・基準地点は動作に必須であり、未設定のまま進める手段を用意しないため（5.8参照）。
 * 初回設定完了後は確認ダイアログを挟まず、直接データ取得へ進む（5.7.2参照）。
-* `WIFI_SETUP_FAILED_INIT`の`BACK`は、プロトタイプ上は遷移先未設定。実装時は`WIFI_SETUP_INIT`へ戻す想定。
+* `WIFI_SETUP_FAILED_INIT`は、リトライ回数（プロジェクト仕様書3.1.2参照）に応じて`RETRY`／`BACK`を出し分ける。`RETRY`の場合は`LOADING_VIEW_WIFI_SETUP_INIT`へ戻り、再度接続試行する。`BACK`の場合は`WIFI_SETUP_INIT`（入力フォーム）へ戻る。
 
 ---
 
@@ -150,7 +153,11 @@ stateDiagram-v2
     WIFI_SETUP_SET --> LOADING_WIFI_SET : 自動（AP設定完了）
     WIFI_SETUP_SET --> MENU_VIEW : BACK [BtnA]
     LOADING_WIFI_SET --> WIFI_SUCCESS_SET : 自動（接続成功）
+    LOADING_WIFI_SET --> WIFI_FAILED_SET : 自動（接続失敗）
     WIFI_SUCCESS_SET --> MENU_VIEW : NEXT [BtnC]
+
+    WIFI_FAILED_SET --> LOADING_WIFI_SET : RETRY [BtnC]（リトライ上限内）
+    WIFI_FAILED_SET --> WIFI_SETUP_SET : BACK [BtnA]（リトライ上限到達後）
 
     MENU_VIEW : MENU_VIEW<br>SETTINGS
     QR_LOCATION_SET : QR_VIEW_LOCATION_SETTINGS
@@ -164,6 +171,7 @@ stateDiagram-v2
     WIFI_SETUP_SET : WIFI_SETUP_SETTINGS
     LOADING_WIFI_SET : LOADING_VIEW_WIFI_SETUP_SETTINGS
     WIFI_SUCCESS_SET : WIFI_SETUP_SUCCESS_SETTINGS
+    WIFI_FAILED_SET : WIFI_SETUP_FAILED_SETTINGS<br>接続失敗（RETRY/BACK出し分け）
     FLIGHT_VIEW : 機体情報表示へ
 ```
 
@@ -225,6 +233,7 @@ stateDiagram-v2
 | QRコード誘導（APIキー） | `_INIT` / `_SETTINGS` |
 | QRコード誘導（基準地点） | `_INIT` / `_SETTINGS` |
 | Wi-Fi設定（3画面） | `_INIT` / `_SETTINGS` / `_RECONNECT` |
+| Wi-Fi接続失敗画面（RETRY/BACK出し分け） | `_INIT` / `_INIT_LIMIT` / `_SETTINGS` / `_SETTINGS_LIMIT`（`_RECONNECT`はリトライ対象外のため1枚のまま） |
 | ローディング | 文脈ごとに複数 |
 | 確認ダイアログ | `_REFRESH` / `_CHANGE_WIFI` / `_RESET_ALL` / `_FAILED_RECONNECT_WIFI` |
 | 機体0件 | `_NARROW` / `_WIDE` |
@@ -241,9 +250,9 @@ stateDiagram-v2
 
 ## 7. 遷移表
 
-`state_machine.cpp`の実装と対応する、全遷移の一覧（52件）。
+`state_machine.cpp`の実装と対応する、全遷移の一覧（54件）。
 
-### 7.1 ボタン操作による遷移（35件）
+### 7.1 ボタン操作による遷移（37件）
 
 | 遷移元 | ボタン | 位置 | 遷移先 |
 |---|---|---|---|
@@ -279,8 +288,10 @@ stateDiagram-v2
 | **WIFI_SETUP_SUCCESS_INIT** | NEXT | BtnC | QR_VIEW_APIKEY_INIT |
 | **WIFI_SETUP_SUCCESS_SETTINGS** | NEXT | BtnC | MENU_VIEW |
 | **WIFI_SETUP_SUCCESS_RECONNECT** | NEXT | BtnC | CONFIRM_DIALOG_REFRESH |
-| **WIFI_SETUP_FAILED_INIT** | BACK | BtnA | WIFI_SETUP_INIT |
-| **WIFI_SETUP_FAILED_SETTINGS** | BACK | BtnA | WIFI_SETUP_SETTINGS |
+| **WIFI_SETUP_FAILED_INIT** | RETRY（リトライ上限内） | BtnC | LOADING_VIEW_WIFI_SETUP_INIT |
+| WIFI_SETUP_FAILED_INIT | BACK（リトライ上限到達後） | BtnA | WIFI_SETUP_INIT |
+| **WIFI_SETUP_FAILED_SETTINGS** | RETRY（リトライ上限内） | BtnC | LOADING_VIEW_WIFI_SETUP_SETTINGS |
+| WIFI_SETUP_FAILED_SETTINGS | BACK（リトライ上限到達後） | BtnA | WIFI_SETUP_SETTINGS |
 | **WIFI_SETUP_FAILED_RECONNECT** | BACK | BtnA | WIFI_SETUP_RECONNECT |
 | **QR_VIEW_APIKEY_SETTINGS** | BACK | BtnA | MENU_VIEW |
 | **QR_VIEW_LOCATION_SETTINGS** | BACK | BtnA | MENU_VIEW |
