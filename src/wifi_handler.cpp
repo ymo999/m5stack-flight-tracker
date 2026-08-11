@@ -165,3 +165,22 @@ bool handleWiFiSetup() {
 bool isWiFiConnected() {
     return WiFi.status() == WL_CONNECTED;
 }
+
+// ============================================================
+// 異なるネットワークへの切り替え
+// ============================================================
+/**
+ * 保存されているWi-Fi資格情報・ネットワーク設定（静的IP関連）をクリアし、APモードへ移行する
+ * 確認ダイアログでCONFIRMされた後に呼び出される想定（呼び出し元はstate_machine.cpp）
+ */
+void resetAndEnterAPMode() {
+    // 1. NVSのWi-Fi資格情報をクリア
+    clearWifiCredentials();
+
+    // 2. ネットワーク設定（静的IP関連）のみクリア。取得地点・SCAN RANGEは維持
+    clearNetworkConfig();
+
+    // 3. 実行中のIP設定クリア＋APモードへ移行
+    //    enterAPMode()冒頭でWiFi.config()による実行中IP設定のクリアも行われるため、ここでの個別呼び出しは不要
+    enterAPMode();
+}

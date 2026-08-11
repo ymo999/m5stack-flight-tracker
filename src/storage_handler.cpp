@@ -166,10 +166,29 @@ bool loadConfig(ConfigData& config) {
     return true;
 }
 
+// 設定情報全クリア（RESET ALL用）
 void clearConfig() {
     if (LittleFS.exists(CONFIG_PATH)) {
         LittleFS.remove(CONFIG_PATH);
     }
+}
+
+// ネットワーク関連項目（静的IP設定）のみをクリアする
+// 取得地点（lat/lng）・SCAN RANGEは既存の値を維持したまま保存し直す
+void clearNetworkConfig() {
+    ConfigData config;
+    loadConfig(config);             // 未登録時は空のConfigDataのまま（lat/lng/scanRangeもデフォルト値）
+
+    // 静的IP関連の項目のみデフォルト値に戻す
+    config.useStaticIp = false;
+    config.staticIp = "";
+    config.gateway = "";
+    config.subnet = "";
+    config.dns = "";
+
+    // lat/lng/scanRangeはloadConfig()で読み込んだ値のまま変更しないため、
+    // saveConfig()で書き戻しても既存の取得地点・SCAN RANGEは保持される
+    saveConfig(config);
 }
 
 // ============================================================

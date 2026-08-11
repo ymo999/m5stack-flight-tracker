@@ -39,6 +39,11 @@ bool saveConfig(const ConfigData& config);
 bool loadConfig(ConfigData& config);
 void clearConfig();
 
+// ネットワーク関連項目（静的IP設定）のみをクリアする
+// 取得地点（lat/lng）・SCAN RANGEは既存の値を維持したまま保存し直す
+// ネットワーク切り替えフロー（異なるWi-Fiへの再設定）専用
+void clearNetworkConfig();
+
 // 機体情報キャッシュ・残りリクエスト数（LittleFS + JSON、cache.json）
 bool saveCache(const FlightData flights[], int flightCount, int remainingRequests);
 bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests);

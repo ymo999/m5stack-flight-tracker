@@ -23,7 +23,7 @@ extern int wifiRetryCount;
 // ・DNSServer で全ドメイン問い合わせに自機IPを返す
 // ・"/" と "/save" のルーティングを登録（中身は web_handler 側、手順7で実装）
 // ・未登録パスは "/" へ302リダイレクト
-void startCaptivePortal();
+void enterAPMode();
 
 // キャプティブポータル関連の処理をloop()内で呼び出す
 // ・DNSServer::processNextRequest()（DNS要求の処理）
@@ -34,7 +34,7 @@ void handleCaptivePortal();
 // ・DNSServer::stop()
 // ・WebServer::stop()
 // ・WiFi.softAPdisconnect(true)
-void stopCaptivePortal();
+void exitAPMode();
 
 // 起動時のWi-Fi接続判定（登録あり→接続試行、未登録→APモード起動）
 void initWiFi();
@@ -45,5 +45,9 @@ void initWiFi();
 bool handleWiFiSetup();
 
 bool isWiFiConnected();
+
+// 保存されているWi-Fi資格情報・ネットワーク設定（静的IP関連）をクリアし、APモードへ移行する
+// 異なるネットワークへの切り替えフロー専用（確認ダイアログでCONFIRMされた後、state_machine.cpp側から呼び出される想定）
+void resetAndEnterAPMode();
 
 #endif
