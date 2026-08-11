@@ -1,15 +1,22 @@
-/*
-    wifi_handler.cpp
-    Wi-Fi接続・APモード・キャプティブポータル関連機能
-*/
+/**
+ * wifi_handler.cpp
+ * Wi-Fi接続・APモード・キャプティブポータル関連機能
+ */
+
 #include <WiFi.h>
 #include <DNSServer.h>
 #include <WebServer.h>
+#include "web_handler.h"
 #include "wifi_handler.h"
 
 // APモード・キャプティブポータルで使用するインスタンス
 DNSServer dnsServer;
+// web_handler.cppと共有するため、wifi_handler.hでextern宣言している
 WebServer server(80);                               // HTTPのみ
+
+// Wi-Fi接続失敗時のリトライ回数カウンタの実体
+// web_handler.cpp（/save受信時のリセット）と共有するため、wifi_handler.hでextern宣言している
+int wifiRetryCount = 0;
 
 // ============================================================
 // APモード＋キャプティブポータルの起動
@@ -20,11 +27,9 @@ void startCaptivePortal() {
     // 全ドメインへのDNS問い合わせには自機のIPアドレスを返す
     dnsServer.start(53, "*", WiFi.softAPIP());
 
-    // TODO : handleSetupPageとhandleSaveの定義（web_handler側、手順7で実装）
-    /*
-    server.on("/", handleSetupPage);
-    server.on("/save", HTTP_POST, handleSave);
-    */
+    // 初回設定ページの配信・フォーム受信処理を登録（処理の実装はweb_handler側）
+    server.on("/", handleSetupPage);                // 設定情報入力ページ
+    server.on("/save", HTTP_POST, handleSave);      // 登録ボタン押下後
 
     // 未登録パス（OSごとの独自の検証用URL）は、すべてルートパスの設定ページ（wifi.html）に強制リダイレクト（302）
     server.onNotFound([](){
@@ -71,7 +76,7 @@ void stopCaptivePortal() {
 // 以下、他手順（手順8等）で実装予定の関数（現状はTODOのまま維持）
 // ============================================================
 void initWiFi() {
-    /* TODO : 処理内容の記述 */
+    /* TODO : 処理内容の記述（wifiRetryCountのインクリメント処理を含む、3.1.2参照） */
 }
 
 void handleWiFiSetup() {

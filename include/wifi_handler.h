@@ -6,6 +6,15 @@
 #ifndef WIFI_HANDLER_H                          // インクルードガード（二重定義防止）
 #define WIFI_HANDLER_H
 
+#include <WebServer.h>
+
+// wifi_handler.cpp で定義されているWebServerインスタンスを共有する
+extern WebServer server;
+
+// Wi-Fi接続失敗時のリトライ回数カウンタ
+// 実体はwifi_handler.cppに定義。web_handler.cpp（/save受信時のリセット）と共有する
+extern int wifiRetryCount;
+
 // APモードを起動し、キャプティブポータル（DNSServer + 302リダイレクト）を開始する
 // ・WiFi.softAP() でAPを起動
 // ・DNSServer で全ドメイン問い合わせに自機IPを返す
