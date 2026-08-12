@@ -140,6 +140,21 @@ _fields=flight_icao,flight_iata,airline_icao,aircraft_icao,dep_iata,arr_iata,lat
 https://airlabs.co/api/v9/flights?api_key=YOUR_API_KEY&bbox=34.479406600554526,137.88317272541366,35.479406600554526,138.88317272541366&_fields=flight_icao,flight_iata,airline_icao,aircraft_icao,dep_iata,arr_iata,lat,lng,alt,dir,speed,squawk&lang=en
 ```
 
+### 2.1.2 HTTPS通信の証明書検証について
+
+AirLabs APIとのHTTPS通信では、`WiFiClientSecure::setInsecure()`により証明書検証を省略する方針とする。
+
+**理由：**
+* AirLabsは独自のルートCA証明書を公式配布しておらず、`setCACert()`による検証を行うには証明書の入手・維持に見合わない手間がかかる
+* 本システムが扱うデータ（航空機の位置情報等）は機密性が低く、中間者攻撃のリスクを許容できる
+* ESP32側での証明書チェーンの管理・更新コストを避けられる
+
+この方針は、AirLabs APIへの通信全般（周辺機体スキャン、APIキー検証（3.4.1参照）等）に適用する。
+
+**実装上の注意：**
+
+`HTTPClient::begin(url)`にHTTPS URLを直接渡す書き方（`WiFiClientSecure`を介さない）は、arduino-esp32のコミュニティ内でバージョン依存の不安定な挙動が報告されている。本システムでは、`WiFiClientSecure`のインスタンスを明示的に生成し、`begin(client, url)`の形でクライアントを渡す方式に統一する。**3.4.1節のサンプルコードは実装時に本方針に合わせて修正すること。**
+
 ### 2.2 レスポンスデータ構造とM5Stackでのマッピング
 AirLabsから返却されるJSONデータから、以下のキーをパースして表示を行う。
 
