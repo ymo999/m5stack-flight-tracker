@@ -9,6 +9,7 @@
 #include <WebServer.h>
 #include <WiFi.h>
 
+#include "secrets.h"                                // AP_SSID、AP_PASSWORD（Git管理外）
 #include "storage_handler.h"
 #include "web_handler.h"
 
@@ -30,7 +31,12 @@ void enterAPMode() {
     // APモードへ移行する前に静的IP設定をクリアする
     // （直前まで静的IP接続していた場合、内部ルーティングテーブルが競合するため）
     WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
-    WiFi.softAP("M5Stack-AP");                      // アクセスポイント名 : M5Stack-AP
+
+    // 戻り値で起動成否を判定する（secrets.hの書き換えミス等、実行時の異常検知のため）
+    bool apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
+    if (!apStarted) {
+        Serial.println("Failed to start AP mode (check secrets.h)");
+    }
 
     // 全ドメインへのDNS問い合わせには自機のIPアドレスを返す
     dnsServer.start(53, "*", WiFi.softAPIP());
