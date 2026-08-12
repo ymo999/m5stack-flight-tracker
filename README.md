@@ -49,11 +49,13 @@ M5Stack（ESP32）を使用し、指定した地点の周辺を飛行中の航�
 
 ## セットアップ
 
-1. このリポジトリをクローンする
-2. VS Code + PlatformIO 拡張機能をインストールする
-3. `platformio.ini` の依存ライブラリを取得する（PlatformIOが自動解決）
-4. M5Stack BasicをUSB接続し、ビルド・書き込みを行う
-5. 初回起動時、画面の案内に従いWi-Fi・APIキー・取得地点を設定する
+1. [AirLabs](https://airlabs.co/) でAPIキーを取得する
+2. このリポジトリをクローンする
+3. `include/secrets.h.example` を `include/secrets.h` にリネームし、`AP_SSID` / `AP_PASSWORD` の値を書き換える
+4. VS Code + PlatformIO 拡張機能をインストールする
+5. `platformio.ini` の依存ライブラリを取得する（PlatformIOが自動解決）
+6. M5Stack BasicをUSB接続し、ビルド・書き込みを行う
+7. 初回起動時、画面の案内に従いWi-Fi・APIキー・取得地点を設定する
 
 ---
 
