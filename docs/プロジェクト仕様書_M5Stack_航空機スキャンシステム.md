@@ -2253,7 +2253,7 @@ SystemMode currentMode = MODE_WIFI_SETUP;
 void loop() {
   M5.update();
   switch (currentMode) {
-    case MODE_WIFI_SETUP:   handleWiFiSetup();  break;
+    case MODE_WIFI_SETUP:   handleWiFiSetupView();  break;
     case MODE_FLIGHT_VIEW:  handleFlightView();  break;
     case MODE_MENU_VIEW:    handleMenuView();    break;
     // ...
@@ -2299,7 +2299,7 @@ void loop() {
 #ifndef WIFI_HANDLER_H
 #define WIFI_HANDLER_H
 void initWiFi();
-void handleWiFiSetup();
+bool tryConnectWiFi();
 bool isWiFiConnected();
 #endif
 ```
@@ -2308,7 +2308,7 @@ bool isWiFiConnected();
 // src/wifi_handler.cpp（定義）
 #include "wifi_handler.h"
 void initWiFi() { /* 実装 */ }
-void handleWiFiSetup() { /* 実装 */ }
+bool tryConnectWiFi() { /* 実装 */ }
 bool isWiFiConnected() { return WiFi.status() == WL_CONNECTED; }
 ```
 
