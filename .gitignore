@@ -3,4 +3,6 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-include/secrets.h                   # AP用SSID/パスワード
+
+# AP用SSID/パスワード
+include/secrets.h
