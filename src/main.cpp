@@ -1,18 +1,20 @@
-#include <M5Unified.h>
-#include <WiFi.h>
+#include <Arduino.h>
 #include <DNSServer.h>
-#include <WebServer.h>
+#include <M5Unified.h>
 #include <qrcode.h>
+#include <WebServer.h>
+#include <WiFi.h>
 
 #include "api_handler.h"                // テストコード用
 #include "flight_data.h"                // テストコード用
+#include "state_machine.h"
 #include "storage_handler.h"            // テストコード用
 #include "wifi_handler.h"
 
 void setup() {
 
-    // シリアル通信の初期化（ボーレートはplatformio.ini/モニタ側の設定と合わせる）
-    Serial.begin(115200);
+    // シリアル通信の初期化（ボーレートはplatformio.ini/モニタ側の設定と合わせる）※デバッグ用
+    Serial.begin(115200);       Serial.println("[BOOT] Serial initialized");
 
     // M5Stack本体の初期化
     // 起動の高速化および省電力化のため使用しない機能を明示的に無効化する
@@ -24,10 +26,12 @@ void setup() {
     // Wi-Fi関連処理よりも先に記述すること
     // （CoreS3でウォッチドッグタイマーによるリセットがかかりフリーズする既知の現象を回避）
     M5.begin(cfg);
-    M5.Power.begin();
+    M5.Power.begin();           Serial.println("[BOOT] M5.begin() done");
 
-    initStorage();
-    initWiFi();
+    initStorage();              Serial.println("[BOOT] initStorage() done");
+    initWiFi();                 Serial.println("[BOOT] initWiFi() done");
+    initStateMachine();         Serial.println("[BOOT] initStateMachine() done");
+                                Serial.println("[BOOT] setup() complete");
     
     if (isWiFiConnected()) {
         
@@ -46,8 +50,9 @@ void setup() {
         // Serial.println("Wi-Fi Connected Successfully!");
         // 一時テストコード（手順12確認用）↑ここまで
 
-    } else {
-        handleCaptivePortal();   // ← 追加：APモード中はDNS・HTTP要求を処理する
+        // printfの%s書式は本来const char*を期待するので.c_str()を明示的に呼ぶ
+        Serial.printf("[BOOT] Wi-Fi connected(%s)\n", WiFi.localIP().toString().c_str());
+
     }
 
     // 一時テストコード（手順27・28未実装のための代替。本来はapi_key.html/location.htmlで行う想定）↓ここから
@@ -76,11 +81,9 @@ void setup() {
 void loop() {
     M5.update();
 
-    // if (isWiFiConnected()) {
-    //     /* TODO : 処理内容をここに記述 */
-    // } else {
-    //     handleCaptivePortal();   // ← 追加：APモード中はDNS・HTTP要求を処理する
-    // }
+    if (isApModeActive()) {
+        handleCaptivePortal();
+    }
 
-    // 今後のステップ（ボタン押下時のAirLabs APIリクエスト等）をここに実装
+    updateStateMachine();
 }

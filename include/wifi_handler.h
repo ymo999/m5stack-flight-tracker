@@ -42,15 +42,17 @@ void initWiFi();
 // 保存済みの資格情報・ネットワーク設定で、1回分の接続試行を行う
 // 戻り値: true = 接続成功、false = 接続失敗
 // RETRY・機体情報再取得時の再接続等、複数の呼び出し元から呼び出される想定
-bool handleWiFiSetup();
+bool tryConnectWiFi();
 
 bool isWiFiConnected();
+
+bool isApModeActive();
 
 // 保存されているWi-Fi資格情報・ネットワーク設定（静的IP関連）をクリアし、APモードへ移行する
 // 異なるネットワークへの切り替えフロー専用（確認ダイアログでCONFIRMされた後、state_machine.cpp側から呼び出される想定）
 void resetAndEnterAPMode();
 
-// Wi-Fiを有効化する（ステーションモードへ切り替え。接続自体はhandleWiFiSetup()等が別途行う）
+// Wi-Fiを有効化する（ステーションモードへ切り替え。接続自体はtryConnectWiFi()等が別途行う）
 void enableWiFi();
 
 // Wi-Fiを無効化する（低消費電力運用のため、通信不要時はOFFにする）

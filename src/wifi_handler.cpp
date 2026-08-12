@@ -22,6 +22,10 @@ WebServer server(80);                               // HTTPのみ
 // web_handler.cpp（/save受信時のリセット）と共有するため、wifi_handler.hでextern宣言している
 int wifiRetryCount = 0;
 
+// APモードが現在起動中かどうかを示すフラグの実体
+// enterAPMode()でtrue、exitAPMode()でfalseに設定する
+bool apModeActive = false;
+
 // ============================================================
 // APモード＋キャプティブポータルの起動
 // ============================================================
@@ -53,6 +57,8 @@ void enterAPMode() {
     });
 
     server.begin();
+
+    apModeActive = true;
 }
 
 // ============================================================
@@ -84,6 +90,8 @@ void exitAPMode() {
     dnsServer.stop();                               // ポート53番を閉じstart()で確保したリソースを解放
     server.stop();                                  // ポート80番を閉じる
     WiFi.softAPdisconnect(true);                    // APモード終了
+
+    apModeActive = false;
 }
 
 // ============================================================
@@ -94,12 +102,12 @@ void initWiFi() {
 
     if (loadWifiCredentials(ssid, password)) {
         // 登録あり：保存済み情報で接続試行
-        handleWiFiSetup();
+        tryConnectWiFi();
     } else {
         // 未登録：APモードへ移行
         //  ※移行前の静的IP設定クリアは、そもそもこの時点で
         //  　接続試行そのものを行っていないため、WiFi.config()による
-        //  　クリアは不要（静的IPが適用されるのはhandleWiFiSetup()内のみ）
+        //  　クリアは不要（静的IPが適用されるのはtryConnectWiFi()内のみ）
         enterAPMode();
     }
 }
@@ -107,7 +115,7 @@ void initWiFi() {
 // ============================================================
 // 保存済みの資格情報・ネットワーク設定で、1回分の接続試行を行う
 // ============================================================
-bool handleWiFiSetup() {
+bool tryConnectWiFi() {
     // ------------------------------------------------------
     // 1. 保存済みの資格情報・ネットワーク設定を読み込む
     // ------------------------------------------------------
@@ -172,6 +180,10 @@ bool isWiFiConnected() {
     return WiFi.status() == WL_CONNECTED;
 }
 
+bool isApModeActive() {
+    return apModeActive;
+}
+
 // ============================================================
 // 異なるネットワークへの切り替え
 // ============================================================
@@ -195,7 +207,7 @@ void resetAndEnterAPMode() {
 // Wi-Fi電源管理（低消費電力運用）
 // ============================================================
 // Wi-Fiを有効化する（ステーションモードへ切り替え）
-// 接続自体はhandleWiFiSetup()等の呼び出し元が別途行う
+// 接続自体はtryConnectWiFi()等の呼び出し元が別途行う
 void enableWiFi() {
     WiFi.mode(WIFI_STA);
 }
