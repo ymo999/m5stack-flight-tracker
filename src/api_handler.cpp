@@ -7,6 +7,7 @@
 
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <time.h>
 #include <TinyGPSPlus.h>
 #include <WiFiClientSecure.h>
 
@@ -173,4 +174,12 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
 
         insertFlightByDistance(flights, flightCount, data);
     }
+}
+
+// ============================================================
+// NTPで日本標準時に同期する
+// ============================================================
+bool syncTime(struct tm& timeInfo) {
+    configTime(9 * 3600, 0, "ntp.nict.jp");     // JST（UTC+9）でNTP同期
+    return getLocalTime(&timeInfo);             // timeInfoのアドレスに取得した現在日時を書き込み、取得成否を返す
 }

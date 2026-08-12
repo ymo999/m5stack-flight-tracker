@@ -20,4 +20,9 @@ bool fetchFlightsRaw(String& responsePayload);
 // 距離計算に必要な基準地点（lat/lng）は、内部でstorage_handler経由で読み込む
 void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flightCount);
 
+// NTPで日本標準時に同期する
+// 呼び出し時点でWi-Fi接続済みであることが前提
+// 戻り値: true = 同期成功（timeInfoに結果を格納）、false = 同期失敗
+bool syncTime(struct tm& timeInfo);
+
 #endif
