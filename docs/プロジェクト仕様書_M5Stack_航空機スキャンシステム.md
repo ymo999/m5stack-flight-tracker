@@ -920,6 +920,8 @@ M5Stack Basicの16MBフラッシュに対し、LittleFS領域は約1.5MB程度�
 
 本章は、Figmaによる画面設計（32フレーム）・画面遷移設計（52遷移）の完了内容に基づく確定仕様である。
 
+<img width="3920" height="2040" alt="Image" src="https://github.com/user-attachments/assets/3e3b4b1f-6ceb-4212-8909-5039c5f75d27" />
+
 ### 5.0 画面設計方針
 
 * **設計ツール**：Figma を使用する（Excel方眼紙、Excalidraw、PowerPoint、紙とペン等も比較検討した上での確定事項）。
