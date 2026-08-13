@@ -1342,22 +1342,18 @@ BtnC（SET）から遷移する設定メニュー画面の項目を以下の通�
 
 **カーソル位置の表現（項目選択を伴う画面で共通）：**
 
-`DOWN`ボタンで項目を移動する画面（SETTINGS、SCAN RANGE等）では、現在カーソルが当たっている行を**背景色（`TFT_DARKGREY`）で塗って**示す。
+`DOWN`ボタンで項目を移動する画面（SETTINGS、SCAN RANGE等）では、現在カーソルが当たっている行を**背景色（`TFT_WHITE`）で塗って**示す。文字色は、通常項目は選択時に黒へ切り替え、`RESET ALL`は選択・非選択に関わらず赤色を維持する。
 
 * 記号（`>`等）を先頭に付ける方式は、全項目が右にずれてCONFIG画面のようなラベルと値の整列に影響するため採用しない。
-* 文字色を変える方式は、`RESET ALL`の赤色表示と競合するため採用しない。
 * 背景色方式は文字位置が一切変わらず、`fillRect()`を1行追加するだけで実装でき、視認性も最も高い。
 
 ```cpp
-// カーソル行の背景を塗ってから文字を描画する
-for (int i = 0; i < itemCount; i++) {
-    if (i == cursorIndex) {
-        M5.Lcd.fillRect(x, y + i * lineHeight, width, lineHeight, TFT_DARKGREY);
-    }
-    M5.Lcd.setTextColor(colors[i]);
-    M5.Lcd.drawString(items[i], x, y + i * lineHeight);
-}
+// カーソル選択状態を反映した項目を描画する共通関数を使用する
+// forceBlackOnSelect=falseを指定した項目は、選択時も文字色を維持する（RESET ALL等）
+drawCursorHighlight(x, y, width, height, text, isSelected, textColor, forceBlackOnSelect);
 ```
+
+※実機検証の結果、当初案の背景色`TFT_DARKGREY`（灰色）から`TFT_WHITE`（白）に変更した。あわせて、`RESET ALL`の赤文字を選択時も維持する仕組み（`forceBlackOnSelect`引数）を導入し、通常項目とは異なる扱いとした。
 
 **項目名の表記方針：**
 * 画面タイトルが`SETTINGS`であるため、各項目に"SETTING"を繰り返すのは冗長であり、名詞のみで統一する（`LOCATION SETTING`ではなく`LOCATION`）。
@@ -1601,7 +1597,7 @@ SETTINGSの`SCAN RANGE`から遷移する、取得範囲（2.1参照）を選択
 +--------------------------------------------+
 ```
 
-* **カーソル位置**：背景色（`TFT_DARKGREY`）で示す（5.7参照）。
+* **カーソル位置**：背景色（`TFT_WHITE`）で示す（5.7参照）。
 * **現在の設定値**：項目名を**黄色（`TFT_YELLOW`）**で表示する。Wi-Fi設定画面でAP名を黄色で強調している前例（5.9参照）と一貫する。
 * カーソル位置は背景色、現在の設定値は文字色と役割を分けることで、両者を同時に判別できる。
 * 選択した値はLittleFS + JSONに保存する（2.1参照）。
