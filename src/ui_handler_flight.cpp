@@ -3,7 +3,6 @@
  * 機体情報表示画面（FLIGHT_VIEW）の描画処理
  */
 
-#include "airline_dict.h"
 #include "ui_handler.h"
 
 #include <M5Unified.h>
