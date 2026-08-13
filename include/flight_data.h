@@ -34,4 +34,7 @@ extern FlightData foundFlights[MAX_FLIGHT_COUNT];
 extern int totalFlightCount;
 extern int currentDisplayIndex;
 
+// 直近のデータ取得日時（MM/DD HH:MM形式。未取得時は"--/-- --:--"）
+extern String lastUpdateTime;
+
 #endif

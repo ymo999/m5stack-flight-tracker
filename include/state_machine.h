@@ -23,6 +23,12 @@ enum SystemMode {
 // state_machine.cpp で定義されている現在の画面状態を共有する
 extern SystemMode currentMode;
 
+// 画面の再描画が必要かどうかを示すフラグ
+// currentModeの変化時や、表示内容の更新時にtrueへ設定する
+// 各ハンドラは、このフラグがtrueの時のみ描画処理を実行し、falseに戻す
+// ※毎ループでの再描画は無駄な処理、かつちらつきの原因になるため
+extern bool needsRedraw;
+
 // 状態管理機構の初期化（起動時の初期状態を設定する）
 void initStateMachine();
 

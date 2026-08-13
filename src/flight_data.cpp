@@ -8,3 +8,4 @@
 FlightData foundFlights[MAX_FLIGHT_COUNT];
 int totalFlightCount = 0;
 int currentDisplayIndex = 0;
+String lastUpdateTime = "--/-- --:--";
