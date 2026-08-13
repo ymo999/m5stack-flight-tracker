@@ -3,10 +3,11 @@
  * 画面状態（SystemMode）管理・状態遷移関連の実装
  */
 
+#include "state_machine.h"
+
 #include <M5Unified.h>
 
 #include "flight_data.h"
-#include "state_machine.h"
 #include "ui_handler.h"
 
 // 現在の画面状態の実体
@@ -17,6 +18,10 @@ SystemMode currentMode = MODE_WIFI_SETUP;
 // 画面の再描画が必要かどうかを示すフラグの実体
 // 起動直後は必ず1回描画するため、初期値はtrueとする
 bool needsRedraw = true;
+
+// 現在アクティブな画面におけるカーソル位置の実体
+// 画面切り替え時に0へリセットするため、初期値の意味は薄いが便宜上0とする
+int cursorIndex = 0;
 
 // ============================================================
 // 状態管理機構の初期化
@@ -81,6 +86,7 @@ void handleFlightView() {
     if (M5.BtnC.wasPressed()) {
         // SET：設定メニュー画面へ
         currentMode = MODE_MENU_VIEW;
+        cursorIndex = 0;
         needsRedraw = true;
     }
 
@@ -95,7 +101,38 @@ void handleFlightView() {
 
 // 設定メニュー（SETTINGS）
 void handleMenuView() {
-    /* TODO : 処理内容の記述（設定メニュー画面の描画・ボタン処理、5.2・5.7参照） */
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // ------------------------------------------------------
+    if (M5.BtnA.wasPressed()) {
+        // BACK：機体情報表示画面へ戻る
+        currentMode = MODE_FLIGHT_VIEW;
+        needsRedraw = true;
+    }
+
+    if (M5.BtnB.wasPressed()) {
+        // DOWN：カーソルを1つ下へ。最後（RESET ALL）の次は先頭（LOCATION）へループ
+        cursorIndex++;
+        if (cursorIndex >= SETTINGS_TOTAL_ITEM_COUNT) {
+            cursorIndex = 0;
+        }
+        needsRedraw = true;
+    }
+
+    if (M5.BtnC.wasPressed()) {
+        // SELECT：選択中の項目に応じた画面遷移
+        // TODO：各遷移先画面（CONFIG=手順20、確認ダイアログ=手順21、SCAN RANGE=手順22、
+        // Wi-Fi設定関連=手順25等）の実装時に、cursorIndexに応じた分岐処理を記述する
+        needsRedraw = true;
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        drawSettingsView();
+        needsRedraw = false;
+    }
 }
 
 // 設定内容一覧（CONFIG）

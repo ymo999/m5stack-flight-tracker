@@ -29,6 +29,10 @@ extern SystemMode currentMode;
 // ※毎ループでの再描画は無駄な処理、かつちらつきの原因になるため
 extern bool needsRedraw;
 
+// 現在アクティブな画面におけるカーソル位置（項目選択画面で共通使用）
+// 画面（currentMode）切り替え時は必ず0にリセットすること
+extern int cursorIndex;
+
 // 状態管理機構の初期化（起動時の初期状態を設定する）
 void initStateMachine();
 

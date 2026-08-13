@@ -21,11 +21,8 @@
 void drawFlightView() {
     FlightData& flight = foundFlights[currentDisplayIndex];
 
-    M5.Lcd.fillScreen(TFT_BLACK);
-    M5.Lcd.setTextColor(TFT_WHITE);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.setTextDatum(top_left);
-
+    initScreenDrawing();
+    
     // ------------------------------------------------------
     // 取得日時（左上）
     // ------------------------------------------------------

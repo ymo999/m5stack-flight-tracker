@@ -65,6 +65,16 @@ String addThousandsSeparator(int value) {
 }
 
 // ============================================================
+// 画面全体の初期化（背景クリア・共通テキスト設定）
+// ============================================================
+void initScreenDrawing() {
+    M5.Lcd.fillScreen(TFT_BLACK);
+    M5.Lcd.setTextColor(TFT_WHITE);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.setTextDatum(top_left);
+}
+
+// ============================================================
 // 3つのボタンラベルを描画する
 // ============================================================
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC) {
@@ -77,6 +87,26 @@ void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC
     if (labelA != nullptr) M5.Lcd.drawString(labelA, margin + areaWidth * 0 + areaWidth / 2, y);
     if (labelB != nullptr) M5.Lcd.drawString(labelB, margin + areaWidth * 1 + areaWidth / 2, y);
     if (labelC != nullptr) M5.Lcd.drawString(labelC, margin + areaWidth * 2 + areaWidth / 2, y);
+}
+
+// ============================================================
+// カーソル選択状態を反映した項目を描画する
+// 選択中は背景を白で塗りつぶす
+// 文字色は forceBlackOnSelect が true の場合のみ黒に強制し、
+// false の場合は指定された textColor をそのまま維持する
+// （例：RESET ALLは選択時も赤文字を保ちたいため forceBlackOnSelect=false を指定）
+// ============================================================
+void drawCursorHighlight(int x, int y, int width, int height, const char* text, bool isSelected, 
+                        uint16_t textColor, bool forceBlackOnSelect) {
+    if (isSelected) {
+        M5.Lcd.fillRect(x, y, width, height, TFT_WHITE);
+        M5.Lcd.setTextColor(forceBlackOnSelect ? TFT_BLACK : textColor);
+    } else {
+        M5.Lcd.setTextColor(textColor);
+    }
+
+    M5.Lcd.setTextDatum(middle_left);
+    M5.Lcd.drawString(text, x + 5, y + height / 2);   // 左端に5pxの余白を設けて左寄せ
 }
 
 // ============================================================
@@ -94,21 +124,4 @@ void drawBatteryIcon(int x, int y, int level) {
     int fillWidth = (level * 20) / 100;
     uint16_t color = (level <= BATTERY_LOW_THRESHOLD) ? TFT_RED : TFT_WHITE;
     M5.Lcd.fillRect(x + 2, y + 2, fillWidth, 8, color);
-}
-
-// ============================================================
-// カーソル選択状態を反映した項目を描画する
-// 選択中は背景を白で塗りつぶし、文字色を黒に強制する
-// 非選択時は背景を塗らず、指定された文字色（省略時は白）で描画する
-// ============================================================
-void drawCursorHighlight(int x, int y, int width, int height, const char* text, bool isSelected, uint16_t textColor) {
-    if (isSelected) {
-        M5.Lcd.fillRect(x, y, width, height, TFT_WHITE);
-        M5.Lcd.setTextColor(TFT_BLACK);
-    } else {
-        M5.Lcd.setTextColor(textColor);
-    }
-
-    M5.Lcd.setTextDatum(middle_left);
-    M5.Lcd.drawString(text, x + 5, y + height / 2);   // 左端に5pxの余白を設けて左寄せ
 }
