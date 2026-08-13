@@ -8,6 +8,7 @@
 #include "flight_data.h"                // テストコード用
 #include "state_machine.h"
 #include "storage_handler.h"            // テストコード用
+#include "system_status.h"              // テストコード用（電池アイコン見た目確認用）
 #include "ui_handler.h"
 #include "wifi_handler.h"
 
@@ -31,7 +32,7 @@ void setup() {
     initStorage();              Serial.println("[BOOT] initStorage() done");
     initWiFi();                 Serial.println("[BOOT] initWiFi() done");
     initStateMachine();         Serial.println("[BOOT] initStateMachine() done");
-                                Serial.println("[BOOT] setup() complete");
+    Serial.println("[BOOT] setup() complete");
     
     if (isWiFiConnected()) {
         
@@ -52,6 +53,8 @@ void setup() {
     // config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
     // saveConfig(config);
     // Serial.println("Base Point saved.");
+    
+    // updateBatteryLevel();       Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
 
     // struct tm timeInfo;
     // if (syncTime(timeInfo)) {

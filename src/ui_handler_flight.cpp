@@ -10,6 +10,7 @@
 
 #include "airline_dict.h"
 #include "flight_data.h"
+#include "system_status.h"
 
 // 機体情報表示画面の背景色・外枠のY座標範囲
 #define FLIGHT_VIEW_FRAME_Y 35
@@ -34,8 +35,9 @@ void drawFlightView() {
     M5.Lcd.print(lastUpdateTime);
 
     // ------------------------------------------------------
-    // 電池アイコン（右上）は手順17で実装予定。ここでは描画しない
+    // 電池アイコン（右上）
     // ------------------------------------------------------
+    drawBatteryIcon(288, 13, batteryLevel);
 
     // ------------------------------------------------------
     // 外枠（便名エリア〜情報項目エリアを囲む）

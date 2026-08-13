@@ -8,6 +8,7 @@
 #include <M5Unified.h>
 
 #include "flight_data.h"
+#include "system_status.h"
 
 // ============================================================
 // 進行方向（度数）を8方位の英字表記に変換する
@@ -76,4 +77,38 @@ void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC
     if (labelA != nullptr) M5.Lcd.drawString(labelA, margin + areaWidth * 0 + areaWidth / 2, y);
     if (labelB != nullptr) M5.Lcd.drawString(labelB, margin + areaWidth * 1 + areaWidth / 2, y);
     if (labelC != nullptr) M5.Lcd.drawString(labelC, margin + areaWidth * 2 + areaWidth / 2, y);
+}
+
+// ============================================================
+// 電池残量アイコンを描画する
+// ============================================================
+void drawBatteryIcon(int x, int y, int level) {
+    // 非対応（-1）または想定外の値の場合は描画しない（安全策）
+    if (level < 0 || level > 100) return;
+
+    // 外枠と突起部分（プラス端子側）
+    M5.Lcd.drawRect(x, y, 24, 12, TFT_WHITE);
+    M5.Lcd.fillRect(x + 24, y + 3, 3, 6, TFT_WHITE);
+
+    // 残量バー（閾値以下は警告色で表示）
+    int fillWidth = (level * 20) / 100;
+    uint16_t color = (level <= BATTERY_LOW_THRESHOLD) ? TFT_RED : TFT_WHITE;
+    M5.Lcd.fillRect(x + 2, y + 2, fillWidth, 8, color);
+}
+
+// ============================================================
+// カーソル選択状態を反映した項目を描画する
+// 選択中は背景を白で塗りつぶし、文字色を黒に強制する
+// 非選択時は背景を塗らず、指定された文字色（省略時は白）で描画する
+// ============================================================
+void drawCursorHighlight(int x, int y, int width, int height, const char* text, bool isSelected, uint16_t textColor) {
+    if (isSelected) {
+        M5.Lcd.fillRect(x, y, width, height, TFT_WHITE);
+        M5.Lcd.setTextColor(TFT_BLACK);
+    } else {
+        M5.Lcd.setTextColor(textColor);
+    }
+
+    M5.Lcd.setTextDatum(middle_left);
+    M5.Lcd.drawString(text, x + 5, y + height / 2);   // 左端に5pxの余白を設けて左寄せ
 }

@@ -23,6 +23,12 @@ String addThousandsSeparator(int value);
 // 3つのボタンラベルを描画する（nullptrの位置は描画しない）
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC);
 
+// 電池残量アイコンを描画する（levelが範囲外の場合は描画しない）
+void drawBatteryIcon(int x, int y, int level);
+
+// カーソル選択状態を反映した項目を描画する（背景＋テキストの両方を描画）
+void drawCursorHighlight(int x, int y, int width, int height, const char* text, bool isSelected, uint16_t textColor = TFT_WHITE);
+
 // 機体情報表示画面（FLIGHT_VIEW）を描画する
 void drawFlightView();
 
