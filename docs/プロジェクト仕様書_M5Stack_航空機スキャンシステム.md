@@ -1,6 +1,6 @@
 # プロジェクト仕様書：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-12**
+**更新日時：2026-08-13**
 
 本仕様書は、M5Stack（ESP32）を使用した「位置情報を基準にした周辺航空機のライブスキャンシステム」の開発プロジェクト仕様をまとめたものである。
 APIとして「AirLabs API」を採用し、Wi-Fi接続のハードコーディング回避策やデバイス上でのパース・表示処理について定義する。
@@ -160,7 +160,7 @@ AirLabsから返却されるJSONデータから、以下のキーをパースし
 
 | JSONキー | 取得データ | 単位/形式 | 表示・処理内容 |
 |---|---|---|---|
-| `flight_icao` | 便名（ICAOコード） | 例: "SKY598" | **画面上部にメイン表示**。あわせてFlightAware用URL（`https://ja.flightaware.com/live/flight/{flight_icao}`）のQRコード[^1]生成にも使用（5.3参照） |
+| `flight_icao` | 便名（ICAOコード） | 例: "SKY598" | **画面上部にメイン表示**。あわせてFlightAware用URL（`https://flightaware.com/live/flight/{flight_icao}`）のQRコード[^1]生成にも使用（5.3参照） |
 | `flight_iata` | 便名（IATAコード） | 例: "BC598" | `flight_icao`が取得できない場合のフォールバック表示 |
 | `airline_icao` | 航空会社 3レターコード | 例: "SKY" | コードから航空会社名（例: Skymark Airlines）へ変換（内部辞書を使用、5.3.1参照） |
 | `aircraft_icao` | 機種 | 例: "B789" | 機種の表示 |
@@ -1066,11 +1066,10 @@ void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC
 
 ### 5.3 機体情報表示の内容（簡易⇔詳細表示の一本化）
 
-**方針確定（暫定）：案A採用**（「99_プロジェクト全体を通じた質問と相談」での決定事項）
-
 * **周辺機体スキャン（一覧）**：`bbox`指定のAirLabs APIリクエストにより、一覧表示用に複数機を取得する（2章参照）。
-* **詳細情報の取得方法**：ICAOコード指定でのAPI再コールは行わない。選択した機体の発着予定・実績時刻等の詳細情報は、**FlightAwareのWebページ**（`https://ja.flightaware.com/live/flight/{ICAOコード}`）で確認する方式とする。
-  * 例：`https://ja.flightaware.com/live/flight/EVA693`、`https://ja.flightaware.com/live/flight/JAL35`
+* **詳細情報の取得方法**：ICAOコード指定でのAPI再コールは行わない。選択した機体の発着予定・実績時刻等の詳細情報は、**FlightAwareのWebページ**（`https://flightaware.com/live/flight/{ICAOコード}`）で確認する方式とする。
+  * 例：`https://flightaware.com/live/flight/EVA693`、`https://flightaware.com/live/flight/JAL35`
+  * サブドメイン`ja.`を付与しないURLでも日本語表示され、機能上の差異がないことを実機検証で確認済み。QRコードの読み取りやすさ向上のため、URLは短縮した形で使用する（5.6・5.8参照）。
   * URLに埋め込むICAOコードは、一覧取得（`/flights`, bbox指定）のレスポンスに含まれる `flight_icao` の値をそのまま使用する。
   * この方式のため、詳細表示のためのAirLabs API再コールや、それに伴うWi-Fi再接続は発生しない。
 * **画面構成**：従来の「簡易表示」「詳細表示」の2モードは廃止し、「**機体情報表示**」の1画面に一本化する。この画面内にFlightAware用URLのQRコードを、右側の余白エリアに固定配置し、ユーザーがスマートフォン等で読み取ることで詳細情報を確認できるようにする。
@@ -1287,11 +1286,11 @@ M5Stackのディスプレイ（320×240ピクセル）に表示する情報レ�
 |  XXX9999  ABCDEFGHIJKLMNOPQRS...            |  ← 便名＋航空会社名（切り詰めあり）
 +--------------------------------------------+
 |  ROUTE     XXX -> YYY                       |
-|  ALTITUDE  99,999 m                  +-----+|
+|  ALT       99,999 m                  +-----+|
 |  SPEED     9999 km/h                 | QR  ||
 |  HEADING   359 (NW)                  |CODE ||
 |  TYPE      X999                      +-----+|
-|  DISTANCE  99.9 km                  3 of 10 |  ← 通し番号（QRコード下）
+|  DIST      99.9 km                  3 of 10 |  ← 通し番号（QRコード下）
 |  SQUAWK    7500                              |  ← レスポンスにない場合は "---" 表示
 +--------------------------------------------+
 |  PREV            NEXT               SET     |
@@ -1306,6 +1305,11 @@ M5Stackのディスプレイ（320×240ピクセル）に表示する情報レ�
 * ボタンラベル（PREV / NEXT / SET）は画面下部に、5.2節の配置方針（3等分・中央揃え・左右5pxマージン）で表示する。
 * ROUTE欄の矢印は、デフォルトフォントが半角英数字・記号のみ対応であるため、実装上は`->`（ハイフン＋大なり）で表現する。
 * 情報の視覚的階層（主要情報は大きく、補足情報は小さく等）や配色の詳細は、Figmaでの画面設計と合わせて確定する。
+
+**実機検証を経た調整事項（手順16実装時）：**
+* ラベルは`ALTITUDE`・`DISTANCE`ではなく`ALT`・`DIST`と表記する。実機検証の結果、他のラベル（最長8文字）と値の表示開始位置が重なる不具合が判明したため、8文字だった2項目を短縮して解消した。
+* デフォルトフォント（`setTextSize(2)`、1文字12px）は等幅表示のため、Figma上のプロポーショナルフォントの座標をそのまま流用すると文字が重なる。実機検証の結果、ラベルは`x=12`、値は`x=100`から開始する配置に調整した。
+* QRコードは`x=218, y=71, サイズ90px`、誤り訂正レベルは`2`（5.8節の対処優先度1）で配置する。実機でのスキャンのしやすさを優先し、Figma上の想定位置・サイズから実機検証を経て調整した。
 
 ### 5.7 設定メニュー画面（SETTINGS）
 
@@ -2206,7 +2210,7 @@ bool connectWiFiWithTimeout(unsigned long timeoutMs) {
 * 各画面のタイトル（`SETTINGS`、`ERROR`、`Wi-Fi SETUP`等）
 * ボタンラベル（`PREV` / `NEXT` / `SET`、`BACK` / `DOWN` / `SELECT`等）
 * 各種メッセージ（`No flights found.`、`Connecting to Wi-Fi...`、`Connection Failed.`等）
-* 機体情報表示の項目名（`ROUTE`、`ALTITUDE`、`SPEED`等）
+* 機体情報表示の項目名（`ROUTE`、`ALT`、`SPEED`等）
 
 **実装上の留意点：**
 * ソースコードはUTF-8で保存する（PlatformIOの標準はUTF-8）。
@@ -2224,7 +2228,7 @@ bool connectWiFiWithTimeout(unsigned long timeoutMs) {
 
 ## 7. 開発環境・プロジェクト構成
 
-※本章は今後の検討により変更となる箇所が多いため、原則として現時点では内容を変更しないが、コード設計方針（「99_プロジェクト全体を通じた質問と相談」での決定事項）については例外的に本節で反映する。
+※本章は今後の検討により変更となる箇所が多いため、原則として現時点では内容を変更しないが、コード設計方針については例外的に本節で反映する。
 
 ### 7.0 コード設計方針
 
