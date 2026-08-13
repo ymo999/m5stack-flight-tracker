@@ -31,6 +31,10 @@ String truncateText(const char* text, int maxLen);
 // 整数値を3桁ごとにカンマ区切りした文字列に変換する（高度表示用）
 String addThousandsSeparator(int value);
 
+// 文字列の先頭・末尾4文字を残し、中間を "****...****" でマスクする（APIキー表示用）
+// 短すぎる場合（8文字未満）は全体を "****" で置き換える
+String maskSecret(const String& text);
+
 // ------------------------------------------------------
 // 共通描画パーツ（複数画面から呼ばれる、画面の一部分を描画）
 // ------------------------------------------------------
@@ -58,5 +62,8 @@ void drawFlightView();
 
 // 設定メニュー画面（SETTINGS）を描画する
 void drawSettingsView();
+
+// 設定内容一覧画面（CONFIG）を描画する
+void drawConfigView();
 
 #endif

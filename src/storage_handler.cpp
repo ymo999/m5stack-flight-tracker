@@ -60,6 +60,18 @@ bool loadWifiCredentials(String& ssid, String& password) {
     return ssid.length() > 0;
 }
 
+// Wi-Fi資格情報読み込み（SSIDのみ、CONFIG画面等での表示用）
+// パスワードを取得しないことで、不要な機密情報のメモリ展開を避ける
+bool loadWifiSsid(String& ssid) {
+    wifiPrefs.begin("wifi", true);          // true = 読み取り専用モード
+    ssid = wifiPrefs.getString("ssid", "");
+    wifiPrefs.end();
+
+    // SSIDが空なら「未登録」と判定する
+    // .getString()は未保存時にデフォルト値の空文字列を返すため文字数で判断
+    return ssid.length() > 0;
+}
+
 // Wi-Fi資格情報消去
 void clearWifiCredentials() {
     wifiPrefs.begin("wifi", false);
@@ -280,6 +292,31 @@ bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests) {
 
         flightCount++;
     }
+
+    return true;
+}
+
+// 残りリクエスト数のみ読み込む（CONFIG画面等での表示用）
+// 機体データ配列（FlightData[MAX_FLIGHT_COUNT]）の展開を避けるため、
+// remainingRequestsフィールドのみをパースする
+bool loadRemainingRequests(int& remainingRequests) {
+    File file = LittleFS.open(CACHE_PATH, "r");
+    if (!file) {
+        remainingRequests = 0;
+        return false;   // 未存在＝キャッシュなし
+    }
+
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, file);
+    file.close();
+
+    if (error) {
+        Serial.println("Failed to parse cache.json");
+        remainingRequests = 0;
+        return false;
+    }
+
+    remainingRequests = doc["remainingRequests"] | 0;
 
     return true;
 }

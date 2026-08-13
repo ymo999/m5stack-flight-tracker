@@ -29,6 +29,7 @@ int cursorIndex = 0;
 void initStateMachine() {
     currentMode = MODE_WIFI_SETUP;
     needsRedraw = true;
+    Serial.printf("[INIT] initStateMachine() done. currentMode = %d\n", currentMode);
 }
 
 // ============================================================
@@ -71,6 +72,8 @@ void handleFlightView() {
             currentDisplayIndex = totalFlightCount - 1;
         }
         needsRedraw = true;
+        Serial.printf("[BTN] BtnA wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
+        return;
     }
 
     if (M5.BtnB.wasPressed()) {
@@ -81,6 +84,8 @@ void handleFlightView() {
             currentDisplayIndex++;
         }
         needsRedraw = true;
+        Serial.printf("[BTN] BtnB wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
+        return;
     }
 
     if (M5.BtnC.wasPressed()) {
@@ -88,6 +93,8 @@ void handleFlightView() {
         currentMode = MODE_MENU_VIEW;
         cursorIndex = 0;
         needsRedraw = true;
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        return;
     }
 
     // ------------------------------------------------------
@@ -96,6 +103,7 @@ void handleFlightView() {
     if (needsRedraw) {
         drawFlightView();
         needsRedraw = false;
+        Serial.println("[VIEW] FLIGHT VIEW redraw");
     }
 }
 
@@ -108,6 +116,8 @@ void handleMenuView() {
         // BACK：機体情報表示画面へ戻る
         currentMode = MODE_FLIGHT_VIEW;
         needsRedraw = true;
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        return;
     }
 
     if (M5.BtnB.wasPressed()) {
@@ -117,13 +127,20 @@ void handleMenuView() {
             cursorIndex = 0;
         }
         needsRedraw = true;
+        Serial.printf("[BTN] BtnB wasPressed. cursorIndex = %d\n", cursorIndex);
+        return;
     }
 
     if (M5.BtnC.wasPressed()) {
         // SELECT：選択中の項目に応じた画面遷移
-        // TODO：各遷移先画面（CONFIG=手順20、確認ダイアログ=手順21、SCAN RANGE=手順22、
-        // Wi-Fi設定関連=手順25等）の実装時に、cursorIndexに応じた分岐処理を記述する
-        needsRedraw = true;
+        // TODO：LOCATION・API KEY・Wi-Fi・SCAN RANGE・RESET ALL（手順21・22・25等）の分岐は未実装
+        // TODO：可読性の観点では、例えばenumや#defineで項目のインデックスに名前を付けた方が良い
+        if (cursorIndex == 4) {                 // SHOW CONFIG
+            currentMode = MODE_CONFIG_VIEW;
+            needsRedraw = true;
+        }
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        return;
     }
 
     // ------------------------------------------------------
@@ -132,12 +149,31 @@ void handleMenuView() {
     if (needsRedraw) {
         drawSettingsView();
         needsRedraw = false;
+        Serial.println("[VIEW] SETTINGS redraw");
     }
 }
 
 // 設定内容一覧（CONFIG）
 void handleConfigView() {
-    /* TODO : 処理内容の記述（設定内容一覧画面の描画・ボタン処理、5.2・5.7.1参照） */
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // ------------------------------------------------------
+    if (M5.BtnA.wasPressed()) {
+        // BACK：設定メニュー画面へ戻る
+        currentMode = MODE_MENU_VIEW;
+        needsRedraw = true;
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        drawConfigView();
+        needsRedraw = false;
+        Serial.println("[VIEW] CONFIG redraw");
+    }
 }
 
 // SCAN RANGE選択

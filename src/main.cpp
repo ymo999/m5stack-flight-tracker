@@ -45,14 +45,14 @@ void setup() {
     // 暫定的にここでAPIキー・基準地点を仮登録し、機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる。
     // 本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）↓ここから
     // saveApiKey("YOUR_API_KEY_HERE");
-    // Serial.println("API key saved.");
+    // Serial.println("[STORAGE] API key saved");
 
     // ConfigData config;
     // loadConfig(config);
     // config.lat = 35.68037286903755;              // 東京駅の緯度（テスト用）
     // config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
     // saveConfig(config);
-    // Serial.println("Base Point saved.");
+    // Serial.println("[STORAGE] Base Point saved.");
     
     // updateBatteryLevel();       Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
 
@@ -68,7 +68,7 @@ void setup() {
     //     parseFlightsResponse(rawJson, foundFlights, totalFlightCount);
     // }
     // unsigned long elapsed = millis() - startTime;
-    // Serial.printf("Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
+    // Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
     // // ここまで計測（JSONパース）
 
     // if (totalFlightCount > 0) {

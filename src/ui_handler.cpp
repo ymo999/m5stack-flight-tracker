@@ -65,6 +65,17 @@ String addThousandsSeparator(int value) {
 }
 
 // ============================================================
+// 文字列の先頭・末尾4文字を残し、中間をマスクする（APIキー表示用）
+// 8文字未満の場合、先頭・末尾が重複してしまうため全体を "****" に置き換える
+// ============================================================
+String maskSecret(const String& text) {
+    if (text.length() < 8) {
+        return "****";
+    }
+    return text.substring(0, 4) + "****...****" + text.substring(text.length() - 4);
+}
+
+// ============================================================
 // 画面全体の初期化（背景クリア・共通テキスト設定）
 // ============================================================
 void initScreenDrawing() {
@@ -72,6 +83,7 @@ void initScreenDrawing() {
     M5.Lcd.setTextColor(TFT_WHITE);
     M5.Lcd.setTextSize(2);
     M5.Lcd.setTextDatum(top_left);
+    M5.Lcd.setTextWrap(false);   // 画面右端での自動折り返しを無効化（はみ出しはそのまま見切れる）
 }
 
 // ============================================================

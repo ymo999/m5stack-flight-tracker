@@ -27,6 +27,7 @@ bool initStorage();
 // Wi-Fi資格情報（NVS）
 bool saveWifiCredentials(const String& ssid, const String& password);
 bool loadWifiCredentials(String& ssid, String& password);
+bool loadWifiSsid(String& ssid);                            // SSIDのみ取得（パスワードは取得しない、CONFIG画面等での表示用）
 void clearWifiCredentials();
 
 // APIキー（NVS）
@@ -47,6 +48,7 @@ void clearNetworkConfig();
 // 機体情報キャッシュ・残りリクエスト数（LittleFS + JSON、cache.json）
 bool saveCache(const FlightData flights[], int flightCount, int remainingRequests);
 bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests);
+bool loadRemainingRequests(int& remainingRequests);         // 残りリクエスト数のみ取得（CONFIG画面等での表示用）
 void clearCache();
 
 #endif
