@@ -3,9 +3,7 @@
  * UI描画関連の実装
  */
 
-#include "ui_handler.h"
-
-#include <M5Unified.h>
+#include "ui_handler.h"                         // M5Unified.hはこの中でインクルード済
 
 #include "flight_data.h"
 #include "system_status.h"
@@ -83,13 +81,17 @@ void initScreenDrawing() {
     M5.Lcd.setTextColor(TFT_WHITE);
     M5.Lcd.setTextSize(2);
     M5.Lcd.setTextDatum(top_left);
-    M5.Lcd.setTextWrap(false);   // 画面右端での自動折り返しを無効化（はみ出しはそのまま見切れる）
+    M5.Lcd.setTextWrap(false);                          // 画面右端での自動折り返しを無効化（はみ出しはそのまま見切れる）
 }
 
 // ============================================================
 // 3つのボタンラベルを描画する
 // ============================================================
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC) {
+
+    M5.Lcd.setTextColor(TFT_WHITE);                     // 直前の描画で色が変更されていても、ボタンラベルを常に白に固定するため
+    M5.Lcd.drawFastHLine(5, 205, 310, TFT_WHITE);       // ボタンエリアの区切り線
+
     int y = 220;
     int margin = 5;
     int usableWidth = 320 - (margin * 2);   // 310px

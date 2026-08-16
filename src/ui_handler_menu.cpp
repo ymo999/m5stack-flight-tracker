@@ -3,9 +3,7 @@
  * 設定メニュー画面（SETTINGS）の描画処理
  */
 
-#include "ui_handler.h"
-
-#include <M5Unified.h>
+#include "ui_handler.h"                         // M5Unified.hはこの中でインクルード済
 
 #include "state_machine.h"
 
@@ -24,6 +22,8 @@ const char* settingsItems[] = {"LOCATION", "API KEY", "Wi-Fi", "SCAN RANGE", "SH
 // 設定メニュー画面（SETTINGS）を描画する
 // ============================================================
 void drawSettingsView() {
+
+    // 画面共通の初期化
     initScreenDrawing();
 
     // ------------------------------------------------------
@@ -65,6 +65,5 @@ void drawSettingsView() {
     // ------------------------------------------------------
     // ボタンラベル・区切り線
     // ------------------------------------------------------
-    M5.Lcd.drawLine(5, 204, 315, 204, TFT_WHITE);
     drawButtonLabels("BACK", "DOWN", "SELECT");
 }

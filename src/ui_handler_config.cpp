@@ -3,9 +3,8 @@
  * 設定内容一覧画面（CONFIG）の描画処理
  */
 
-#include "ui_handler.h"
+#include "ui_handler.h"                         // M5Unified.hはこの中でインクルード済
 
-#include <M5Unified.h>
 #include <WiFi.h>
 
 #include "storage_handler.h"
@@ -14,6 +13,8 @@
 // 設定内容一覧画面（CONFIG）を描画する
 // ============================================================
 void drawConfigView() {
+
+    // 画面共通の初期化
     initScreenDrawing();
 
     // ------------------------------------------------------
@@ -90,6 +91,5 @@ void drawConfigView() {
     // ボタンラベル・区切り線（size(2)のまま）
     // ------------------------------------------------------
     M5.Lcd.setTextSize(2);
-    M5.Lcd.drawLine(5, 204, 315, 204, TFT_WHITE);
     drawButtonLabels("BACK", nullptr, nullptr);
 }

@@ -3,9 +3,7 @@
  * 機体情報表示画面（FLIGHT_VIEW）の描画処理
  */
 
-#include "ui_handler.h"
-
-#include <M5Unified.h>
+#include "ui_handler.h"                         // M5Unified.hはこの中でインクルード済
 
 #include "airline_dict.h"
 #include "flight_data.h"
@@ -21,6 +19,7 @@
 void drawFlightView() {
     FlightData& flight = foundFlights[currentDisplayIndex];
 
+    // 画面共通の初期化
     initScreenDrawing();
     
     // ------------------------------------------------------
@@ -42,6 +41,8 @@ void drawFlightView() {
 
     // ------------------------------------------------------
     // 便名（左）＋航空会社名（右、切り詰めあり）
+    // 便名は仕様上（ICAO/FAA規定）最大7文字（12px×7=84px）のため、
+    // 航空会社名の開始位置をx=104に固定できる
     // ------------------------------------------------------
     String callsignText = (flight.callsign.length() > 0) ? flight.callsign : "---";
     M5.Lcd.setCursor(12, 40);
@@ -50,8 +51,8 @@ void drawFlightView() {
     String airlineName = (flight.airlineIcao.length() > 0)
         ? String(getAirlineName(flight.airlineIcao.c_str()))
         : "---";
-    M5.Lcd.setCursor(92, 40);
-    M5.Lcd.print(truncateText(airlineName.c_str(), 18));
+    M5.Lcd.setCursor(104, 40);
+    M5.Lcd.print(truncateText(airlineName.c_str(), 16));
 
     // ------------------------------------------------------
     // 便名・航空会社名エリアの下の区切り線
@@ -150,7 +151,6 @@ void drawFlightView() {
     // ------------------------------------------------------
     // ボタンラベル・区切り線
     // ------------------------------------------------------
-    M5.Lcd.drawLine(5, 204, 315, 204, TFT_WHITE);
     drawButtonLabels("PREV", "NEXT", "SET");
 
 }
