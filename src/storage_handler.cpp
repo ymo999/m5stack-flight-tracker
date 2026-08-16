@@ -150,6 +150,17 @@ bool saveConfig(const ConfigData& config) {
 
 // 設定情報読み込み
 bool loadConfig(ConfigData& config) {
+
+    // 初期化（ファイルが存在しない場合や、読み込みに失敗した場合に不正値が残らないようにする
+    config.useStaticIp = false;
+    config.staticIp = "";
+    config.gateway = "";
+    config.subnet = "";
+    config.dns = "";
+    config.lat = 0.0;
+    config.lng = 0.0;
+    config.scanRange = "NARROW";
+
     File file = LittleFS.open(CONFIG_PATH, "r");
     if (!file) {
         return false;                                           // 設定ファイルなし...初回起動時、設定クリア直後など

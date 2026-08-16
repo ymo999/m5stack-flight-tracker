@@ -152,6 +152,7 @@ bool tryConnectWiFi() {
         delay(100);
     }
 
+    Serial.printf("[WIFI] WiFi.status() after attempt = %d (ssid=\"%s\")\n", WiFi.status(), ssid.c_str());
     bool connected = (WiFi.status() == WL_CONNECTED);
 
     // ------------------------------------------------------
