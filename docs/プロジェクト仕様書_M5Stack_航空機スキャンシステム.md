@@ -1,6 +1,6 @@
 # プロジェクト仕様書：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-13**
+**更新日時：2026-08-16**
 
 本仕様書は、M5Stack（ESP32）を使用した「位置情報を基準にした周辺航空機のライブスキャンシステム」の開発プロジェクト仕様をまとめたものである。
 APIとして「AirLabs API」を採用し、Wi-Fi接続のハードコーディング回避策やデバイス上でのパース・表示処理について定義する。
@@ -262,16 +262,7 @@ AirLabs APIのレスポンスには、基準地点（取得地点）から各機
   * 自前でHaversine公式を実装する案もあったが、既存ライブラリの実績を優先し、ライブラリ流用を採用した。
   * 呼び出し例：`double dist = TinyGPSPlus::distanceBetween(lat1, lng1, lat2, lng2);`（静的関数のため、インスタンス化は不要）
 * **距離の単位・表記**：**km表記**とする（当初はm表記も検討したが、想定スキャン範囲（2.1参照：半径115〜120km相当）との整合を考慮し、km表記に統一した）。
-* **方位表示**：取得した`dir`（進行方向、度数）を8方位の英字表記（N/NE/E/SE/S/SW/W/NW）に変換して表示する。日本語フォント・矢印記号（Unicode）は、メモリ・実装負荷の観点、およびデフォルトフォントが矢印記号（U+2190〜U+21FF等）に対応していないことから採用しない。
-
-```cpp
-const char* getDirectionLabel(float heading) {
-  int index = (int)((heading + 22.5) / 45.0) % 8;
-  const char* directions[] = {"N", "NE", "E", "SE", "S", "SW", "W", "NW"};
-  return directions[index];
-}
-```
-
+* **方位表示**：取得した`dir`（進行方向、度数）を8方位の英字表記（N/NE/E/SE/S/SW/W/NW）に変換して表示する。日本語フォント・矢印記号（Unicode）は、メモリ・実装負荷の観点、およびデフォルトフォントが矢印記号（U+2190〜U+21FF等）に対応していないことから採用しない。変換は「中心角±22.5°」の範囲で8方位に割り当てる方式。実装は`ui_handler.h`/`.cpp`の`getDirectionLabel()`を参照。
 * **基準地点**：現時点では固定座標（4章で登録した取得地点）を使用する。GPSモジュールによる動的取得（現在地追従）は将来的な検討事項とし、現時点では対応しない。
 
 ### 2.4 機体情報キャッシュ仕様
@@ -327,33 +318,9 @@ data/
 | `cache.json` | 高い（データ取得のたび） | 機体情報と残りリクエスト数を**1ファイルに統合**し、書き込み回数を2回→1回に半減 |
 
 * **ファイルを分ける理由**：設定値がキャッシュの高頻度な書き込みに巻き込まれないようにするため。
-* **差分チェックの実装**：保存前に生成したJSON文字列と既存ファイルの内容を比較し、一致する場合は書き込みをスキップする。読み込みは摩耗の対象外であるため、追加コストは実質的にない。
-
-```cpp
-// 保存対象のJSON文字列を生成
-String newJson;
-serializeJson(doc, newJson);
-
-// 既存ファイルの内容を読み込んで比較する
-File file = LittleFS.open("/config.json", "r");
-String currentJson = file ? file.readString() : "";
-if (file) file.close();
-
-// 内容が同じなら書き込まない
-if (newJson == currentJson) {
-    return;
-}
-
-// 差分がある場合のみ書き込む
-file = LittleFS.open("/config.json", "w");
-file.print(newJson);
-file.close();
-```
-
+* **差分チェックの実装**：保存前に生成したJSON文字列と既存ファイルの内容を比較し、一致する場合は書き込みをスキップする。読み込みは摩耗の対象外であるため、追加コストは実質的にない。実装は`storage_handler.cpp`の`saveConfig()`を参照。
 * **`cache.json`には差分チェックが効かない**（取得のたびに内容が変わるため）。機体情報を蓄積せず常に上書きする性質上、RAMに溜めて一括保存する手法も適用できない。
 * **将来的な選択肢**：書き込み回数が問題となる場合、`cache.json`のみmicroSDへ移すことも可能（追加工数8〜13時間の見込み）。ただしHTMLファイルは、SDカード未挿入時に設定画面を開けなくなり復旧不能となるため、LittleFSに残す必要がある。
-
-* **実装の詳細**（保存先ファイル名、JSON構造等）は実装時に確定する。
 
 **書き込み失敗時の扱い：**
 
@@ -527,53 +494,12 @@ APモード移行時、スマートフォン等が「M5Stack-AP」に接続す�
 2. 各OSは接続直後に、インターネット接続を確認するための特定URL（Androidは`generate_204`、iOSは`hotspot-detect.html`等）へHTTPアクセスする。
 3. これらのアクセスに対し**HTTP 302で設定ページへリダイレクト**を返すと、OSは「ログインが必要なネットワーク」と判断し、設定画面を自動的にポップアップ表示する。
 
-```cpp
-#include <DNSServer.h>
-#include <WebServer.h>
-#include "secrets.h"    // AP_SSID / AP_PASSWORD（Git管理外）
-
-DNSServer dnsServer;
-WebServer server(80);   // HTTPのみ。HTTPSは扱わない
-
-void enterAPMode() {
-    WiFi.softAP(AP_SSID, AP_PASSWORD);
-
-    // 全ドメインへのDNS問い合わせに自機IPを返す
-    dnsServer.start(53, "*", WiFi.softAPIP());
-
-    server.on("/", handleSetupPage);
-    server.on("/save", HTTP_POST, handleSave);
-
-    // 未登録パスは全て設定ページへ302リダイレクト（OS別URLを個別対応しない）
-    server.onNotFound([]() {
-        server.sendHeader("Location", "/", true);
-        server.send(302, "text/plain", "");
-    });
-
-    server.begin();
-}
-
-void loop() {
-    dnsServer.processNextRequest();   // DNS要求の処理（ループ内で必要）
-    server.handleClient();             // HTTP要求の処理
-}
-```
-
 **実装上の留意点：**
 * **OS別のURLを個別に登録しない**。`onNotFound()`で一括リダイレクトすれば、OSやバージョンによるURLの差異を意識せずに済み、保守性が高い。
 * **HTTPSは扱わない**（ポート80のみ）。未認証時にHTTPS通信を302リダイレクトすると証明書エラー（警告画面）が発生するため、HTTPのみをフックする。
 * **設定完了後は必ずAPを停止する**。停止し忘れると、APが立ち続けて他の端末が誤接続する可能性がある。
-
-```cpp
-// 設定完了後のAP停止処理
-void exitAPMode() {
-    dnsServer.stop();
-    server.stop();
-    WiFi.softAPdisconnect(true);
-}
-```
-
 * DNSServerが応答するのはM5Stack-APに接続した端末のみであり、他のネットワーク上の端末に影響を与えることはない。
+* 実装は`wifi_handler.h`/`.cpp`（`enterAPMode()`/`exitAPMode()`/`handleCaptivePortal()`/`isApModeActive()`）を参照。APモード起動状態は`apModeActive`フラグで管理し、`main.cpp`の`loop()`から`isApModeActive()`経由で継続的に`handleCaptivePortal()`を呼び出す構成としている。
 
 ### 3.3 資格情報の保存方式
 
@@ -762,15 +688,6 @@ pingのレスポンスには`key.limits_total`（残りリクエスト数）が�
 
 Arduino標準の`IPAddress::fromString()`を使用する。パースと形式検証を同時に行え、戻り値が`bool`で妥当性を判定できる。lwIPの`ip4addr_aton()`も使用可能だが、`ip4_addr_t`型から`IPAddress`型への変換が別途必要になるため採用しない。
 
-```cpp
-IPAddress ip;
-if (ip.fromString(ipString)) {
-    // パース成功。そのまま WiFi.config() に渡せる
-} else {
-    // 形式が不正
-}
-```
-
 * `fromString()`が検証するのは形式（`x.x.x.x`、各オクテット0〜255）のみである。ネットワークアドレス・ブロードキャストアドレスの指定や、IPとGatewayが異なるサブネットにある等の論理的な誤りは検出できない。入力を誤れば接続に失敗しAPモードで再入力できるため、本システムではこの範囲の検証で十分とする。
 
 **必須となる3つの対処：**
@@ -779,17 +696,7 @@ if (ip.fromString(ipString)) {
 
 **① 接続成功直後のDNS再適用**
 
-`WiFi.config()`で静的IPを設定してから接続しても、DNS情報が正しく反映されない場合がある。接続成功後に改めて`WiFi.config()`を呼び、DNSを再適用する。
-
-```cpp
-if (WiFi.status() == WL_CONNECTED) {
-    // 接続成功直後に、DNSを含めて再適用する
-    if (useStaticIp) {
-        WiFi.config(staticIp, gateway, subnet, dns);
-        delay(100);   // DNS設定の反映を待つ（環境によっては即座の名前解決に失敗するため）
-    }
-}
-```
+`WiFi.config()`で静的IPを設定してから接続しても、DNS情報が正しく反映されない場合がある。接続成功後に改めて`WiFi.config()`を呼び、DNSを再適用する（`delay(100)`でDNS設定の反映を待つ）。
 
 **② 設定値の自前保存・読み込み**
 
@@ -797,12 +704,9 @@ if (WiFi.status() == WL_CONNECTED) {
 
 **③ APモード移行時の静的IP設定クリア**
 
-静的IP設定が有効なままAPモードへ移行すると、内部ルーティングテーブルが競合し、設定ポータルにアクセスできなくなる可能性がある。APモードへ入る前に設定をクリアする。
+静的IP設定が有効なままAPモードへ移行すると、内部ルーティングテーブルが競合し、設定ポータルにアクセスできなくなる可能性がある。APモードへ入る前に、`WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE)`で設定をクリアする。
 
-```cpp
-// APモードへ移行する前に静的IP設定をクリアする
-WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
-```
+①〜③の実装は`wifi_handler.cpp`の`tryConnectWiFi()`/`enterAPMode()`を参照。
 
 ---
 
@@ -852,7 +756,7 @@ WiFi.config(INADDR_NONE, INADDR_NONE, INADDR_NONE);
 * **保存形式**：LittleFS + JSON（`bblanchon/ArduinoJson`を使用）
 * **採用理由**：AirLabs APIのレスポンスパース処理で既に`ArduinoJson`ライブラリを使用しているため、新規パーサーの追加なしで実装できる。また、将来的に設定項目が増えた場合も同じ形式で拡張しやすい。
 * **既存方式（NVS）との違い**：Wi-Fi資格情報（3.3参照）・APIキー（3.4参照）はNVSへ非公開で保存するのに対し、取得地点および機体情報キャッシュ（2.4参照）はテキストとして外部から読み取り可能な形で保存してよい。
-* **実装の詳細**（保存先ファイル名、JSON構造、LittleFSのマウント処理等）は実装時に確定する。
+* 実装は`storage_handler.h`/`.cpp`（`ConfigData`構造体、`saveConfig()`/`loadConfig()`）を参照。
 
 ### 4.4 設定用Webページのその他仕様
 
@@ -1048,21 +952,8 @@ M5Stack Basic（320×240px、ILI9342C）のデフォルトフォント（フォ�
 **ボタンラベルの配置方針：**
 * 画面幅320pxを左右5pxずつのマージンを除いた310pxで3等分し、各ラベルを`setTextDatum(middle_center)`で中央揃え配置する。
 * ボタンに機能を割り当てない位置は、ラベルを表示せず空白とする。
-
-```cpp
-// 3つのボタンラベルを描画する（nullptr の位置は描画しない）
-void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC) {
-  int y = 220;
-  int margin = 5;
-  int usableWidth = 320 - (margin * 2);  // 310px
-  int areaWidth = usableWidth / 3;
-
-  M5.Lcd.setTextDatum(middle_center);
-  if (labelA != nullptr) M5.Lcd.drawString(labelA, margin + areaWidth * 0 + areaWidth / 2, y);
-  if (labelB != nullptr) M5.Lcd.drawString(labelB, margin + areaWidth * 1 + areaWidth / 2, y);
-  if (labelC != nullptr) M5.Lcd.drawString(labelC, margin + areaWidth * 2 + areaWidth / 2, y);
-}
-```
+* ボタンエリア上部の区切り線も本関数内で描画する共通処理とする。
+* 実装は`ui_handler.h`/`.cpp`の`drawButtonLabels()`を参照。
 
 ※旧仕様ではBtnAを「簡易⇔詳細表示の切替」に割り当てていたが、5.3の変更（簡易／詳細表示の一本化）に伴い、BtnAは「前の機体の表示（PREV）」に役割を変更した。これによりBtnA/BtnBで前後双方向に機体を送れるようになる。
 
@@ -1089,59 +980,15 @@ void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC
 ICAOコードから航空会社名へ変換する内部辞書の実装方式を以下の通り確定した。
 
 **データ構造：**
-* `const AirlineEntry[]`の静的配列として保持する。`const`宣言した静的データはESP32のフラッシュ領域（`.rodata`）に自動配置されるため、**RAM消費は実質ゼロ**である。
+* `const AirlineEntry[]`（`code`/`name`の2フィールド）の静的配列として保持する。`const`宣言した静的データはESP32のフラッシュ領域（`.rodata`）に自動配置されるため、**RAM消費は実質ゼロ**である。
 * `String`型は使用せず、`const char*`で統一する（ヒープ確保のオーバーヘッドを回避するため）。
-
-```cpp
-// include/airline_dict.h
-struct AirlineEntry {
-    const char* code;   // ICAOコード（3文字）
-    const char* name;   // 航空会社名
-};
-
-const char* getAirlineName(const char* icaoCode);
-```
 
 **検索方式：**
 * `strcmp`ベースの**二分探索**を用いる。964件の場合でも最大10回程度の比較で完了し、処理時間は約5μs（API通信1回の0.2〜0.5秒と比べて桁違いに軽い）。
 * **前提条件**：配列は**ICAOコードの昇順にソート済み**である必要がある。
 * 要素数は`sizeof(AIRLINE_TABLE) / sizeof(AirlineEntry)`で自動計算し、件数変更時の修正漏れを防ぐ。
-
-```cpp
-// src/airline_dict.cpp
-static const AirlineEntry AIRLINE_TABLE[] = {
-    {"AAL", "American Airlines"},
-    {"AAR", "Asiana Airlines"},
-    {"ANA", "All Nippon Airways"},
-    {"JAL", "Japan Airlines"},
-    {"SKY", "Skymark Airlines"},
-    // ...
-};
-
-static const int AIRLINE_COUNT = sizeof(AIRLINE_TABLE) / sizeof(AirlineEntry);
-
-const char* getAirlineName(const char* icaoCode) {
-    int low = 0;
-    int high = AIRLINE_COUNT - 1;
-
-    // 二分探索：964件でも最大10回程度の比較で完了する
-    while (low <= high) {
-        int mid = (low + high) / 2;
-        int cmp = strcmp(icaoCode, AIRLINE_TABLE[mid].code);
-
-        if (cmp == 0) {
-            return AIRLINE_TABLE[mid].name;   // 一致
-        } else if (cmp < 0) {
-            high = mid - 1;                    // 前半を探索
-        } else {
-            low = mid + 1;                     // 後半を探索
-        }
-    }
-
-    // 見つからない場合はコードをそのまま返す（フォールバック）
-    return icaoCode;
-}
-```
+* 該当コードが見つからない場合はコードをそのまま返すフォールバックとする。
+* 実装は`airline_dict.h`/`.cpp`（`AirlineEntry`構造体、`getAirlineName()`）を参照。
 
 **収録件数の方針（段階的アプローチ）：**
 
@@ -1164,19 +1011,8 @@ const char* getAirlineName(const char* icaoCode) {
 * **省略記号**：`...`（ピリオド3つ、ASCII文字）を使用する。
 * **切り詰め後の本文文字数**：`maxLen - 3`文字とし、末尾に省略記号を付与する。
 * **フォントサイズは変更しない**：文字数に応じてフォントを縮小する方式は採用しない（デザインの一貫性・視認性を優先するため）。ただし、これは原則であり、実機検証の結果、画面全体の情報密度が高く文字が収まりきらない等の不具合が生じた場合は、画面単位でフォントサイズを縮小することがある（CONFIG画面の例：5.7.1参照）。
-* **`maxLen`の具体値**：Figmaでのレイアウト確定後に決定する。
-
-```cpp
-// 指定文字数に収まらない場合、末尾3文字分を "..." に置き換える
-String truncateText(const char* text, int maxLen) {
-    String s = String(text);
-    if (s.length() <= maxLen) {
-        return s;
-    }
-    // maxLen - 3 文字分を残し、末尾に "..." を付与
-    return s.substring(0, maxLen - 3) + "...";
-}
-```
+* **`maxLen`の具体値**：実機検証の結果、18文字程度に確定した（`ui_handler_flight.cpp`で使用中）。
+* 実装は`ui_handler.h`/`.cpp`の`truncateText()`を参照。
 
 ### 5.4 表示項目一覧（確定）
 
@@ -1217,65 +1053,20 @@ String truncateText(const char* text, int maxLen) {
 * **表示形式**：`MM/DD HH:MM`（日付＋時刻）とする。
 * **表示位置**：画面最上部の左側に、電池アイコン（5.5.1参照）と同じ行で表示する。※当初はボタンラベル直上を想定していたが、Figmaでの画面設計を経て、縦スペースの有効活用のため画面上部に変更した。
 * **初期値（未取得時）**：`"--/-- --:--"` とする。
-
-```cpp
-String lastUpdateTime = "--/-- --:--";
-
-void syncTimeAndFetchData() {
-  connectWiFi();
-  configTime(9 * 3600, 0, "ntp.nict.jp");  // JST（UTC+9）でNTP同期
-
-  fetchFlightData();
-
-  struct tm timeInfo;
-  if (getLocalTime(&timeInfo)) {
-    char buf[12];
-    sprintf(buf, "%02d/%02d %02d:%02d",
-            timeInfo.tm_mon + 1,   // tm_monは0始まりのため+1
-            timeInfo.tm_mday,
-            timeInfo.tm_hour,
-            timeInfo.tm_min);
-    lastUpdateTime = String(buf);
-  }
-
-  WiFi.disconnect(true);
-}
-```
+* 実装は`flight_data.h`/`.cpp`（`lastUpdateTime`）、`ui_handler.h`/`.cpp`（`formatUpdateTime()`）を参照。
 
 ### 5.5.1 電池容量表示
 
 M5Stack本体の電池残量をアイコンとして画面右上に表示する。取得日時（5.5参照）と同じ行の右端に配置する。
 
 * **取得方法**：`M5.Power.getBatteryLevel()`（事前に`M5.Power.begin()`での初期化が必要）。
-* **対応可否の判定**：`M5.Power.canControl()`で事前にチェックする。機種・購入時期によっては電源管理ICが非搭載の場合があり、その場合`canControl()`は`false`を返す。
-* **センチネル値**：`int batteryLevel = -1;` を「未対応・取得不可」を表す値として用いる。
-* **非対応時の挙動**：電池アイコン自体を描画しない（`if (level < 0) return;`）。エラー表示等は行わない。
+* **センチネル値**：`int batteryLevel = -1;` を「未対応・取得不可」を表す値として用いる。異常値（範囲外）も同様に描画スキップの対象とする。
+* **非対応時の挙動**：電池アイコン自体を描画しない。エラー表示等は行わない。
 * **非表示時のスペース扱い**：代替表示は設けず、空白のままとする。
-* **描画方法**：`drawRect()`（外枠）＋`fillRect()`（残量バー）による自前の電池アイコン。
+* **描画方法**：`drawRect()`（外枠）＋`fillRect()`（残量バー）による自前の電池アイコン。残量が閾値（`BATTERY_LOW_THRESHOLD`）以下の場合は警告色で表示する。
 * **精度に関する注意**：`getBatteryLevel()`の戻り値は、実機によっては0, 25, 50, 75, 100等の5段階程度の粗い値になる可能性がある。
-
-```cpp
-int batteryLevel = -1;
-
-void setup() {
-  M5.Power.begin();
-  if (M5.Power.canControl()) {
-    batteryLevel = M5.Power.getBatteryLevel();
-  }
-  // 非対応の場合は -1 のまま
-}
-
-void drawBatteryIcon(int x, int y, int level) {
-  if (level < 0) return;  // 非対応時は空白のまま
-
-  M5.Lcd.drawRect(x, y, 24, 12, TFT_WHITE);
-  M5.Lcd.fillRect(x + 24, y + 3, 3, 6, TFT_WHITE);
-
-  int fillWidth = (level * 20) / 100;
-  uint16_t color = (level <= 20) ? TFT_RED : TFT_GREEN;
-  M5.Lcd.fillRect(x + 2, y + 2, fillWidth, 8, color);
-}
-```
+* **実装上の注記**：`M5.Power.canControl()`はM5Stack Basicではコンパイルエラーとなるため使用しない。`getBatteryLevel()`の戻り値をそのまま採用し、範囲外の値は描画側のガードで弾く方式とした。
+* 実装は`system_status.h`/`.cpp`（`batteryLevel`、`updateBatteryLevel()`）、`ui_handler.h`/`.cpp`（`drawBatteryIcon()`）を参照。
 
 ### 5.6 画面表示レイアウト案（確定）
 
@@ -1348,12 +1139,8 @@ BtnC（SET）から遷移する設定メニュー画面の項目を以下の通�
 
 * 記号（`>`等）を先頭に付ける方式は、全項目が右にずれてCONFIG画面のようなラベルと値の整列に影響するため採用しない。
 * 背景色方式は文字位置が一切変わらず、`fillRect()`を1行追加するだけで実装でき、視認性も最も高い。
-
-```cpp
-// カーソル選択状態を反映した項目を描画する共通関数を使用する
-// forceBlackOnSelect=falseを指定した項目は、選択時も文字色を維持する（RESET ALL等）
-drawCursorHighlight(x, y, width, height, text, isSelected, textColor, forceBlackOnSelect);
-```
+* `forceBlackOnSelect`引数がfalseの項目は、選択時も文字色を維持する（`RESET ALL`等）。
+* 実装は`ui_handler.h`/`.cpp`の`drawCursorHighlight()`を参照。
 
 ※実機検証の結果、当初案の背景色`TFT_DARKGREY`（灰色）から`TFT_WHITE`（白）に変更した。あわせて、`RESET ALL`の赤文字を選択時も維持する仕組み（`forceBlackOnSelect`引数）を導入し、通常項目とは異なる扱いとした。
 
@@ -1475,112 +1262,24 @@ drawCursorHighlight(x, y, width, height, text, isSelected, textColor, forceBlack
 
 **実装方式（共通関数化）：**
 
-```cpp
-// include/ui_handler.h
-// 確認ダイアログの共通描画関数
-// title    : メインメッセージ（"Reset all settings?" 等）
-// message1 : 詳細説明の1行目
-// message2 : 詳細説明の2行目（不要な場合は nullptr）
-void drawConfirmDialog(const char* title, const char* message1, const char* message2);
-```
+描画は`drawConfirmDialog(title, message1, message2)`という共通関数で行う（`ui_handler.h`/`ui_handler_confirm.cpp`）。CANCEL/CONFIRM後の遷移先は、確認ダイアログの種別（`ConfirmTarget` enum）によって分岐する。
 
-```cpp
-// src/ui_handler.cpp
-void drawConfirmDialog(const char* title, const char* message1, const char* message2) {
-    M5.Lcd.fillScreen(TFT_BLACK);
+**`ConfirmTarget`の設計方針：**
 
-    // 外枠
-    M5.Lcd.drawRect(5, 5, 310, 230, TFT_WHITE);
+「同一の描画内容でも、遷移元によってCANCEL/CONFIRM後の遷移先が異なる」ケースに対応するため、汎用的な「直前の画面」変数（`previousMode`等）は使わず、**遷移元ごとに個別のenum値**を用意する方式を採用する（7.0節の設計方針と一貫）。
 
-    // 見出し（左揃え、やや大きめ）
-    M5.Lcd.setTextDatum(top_left);
-    M5.Lcd.setTextSize(2);
-    M5.Lcd.drawString(title, 15, 25);
+`Wi-Fi`確認ダイアログは、SETTINGSからの遷移（`CONFIRM_WIFI_SETTINGS`）と、機体再取得時の接続失敗からの遷移（`CONFIRM_WIFI_RECONNECT`）の2経路があり、表示内容は同一だが戻り先が異なるため、この2つに分ける。
 
-    // 説明文（小さめ）
-    M5.Lcd.setTextSize(1);
-    M5.Lcd.drawString(message1, 15, 70);
+| `ConfirmTarget` | 遷移元 | CANCEL時の戻り先 |
+|---|---|---|
+| `CONFIRM_RESET` | SETTINGS | SETTINGS |
+| `CONFIRM_WIFI_SETTINGS` | SETTINGS | SETTINGS |
+| `CONFIRM_WIFI_RECONNECT` | 機体再取得時の接続失敗 | FLIGHT_VIEW（1機目） |
+| `CONFIRM_REFRESH` | FLIGHT_VIEW（最終機体で`NEXT`） | FLIGHT_VIEW（1機目） |
 
-    if (message2 != nullptr) {
-        M5.Lcd.drawString(message2, 15, 85);
-    }
+CONFIRM時の実行処理（`executeResetAll()`等）も同じenumでswitch分岐する。`executeResetAll()`はB案（`ESP.restart()`による実機再起動）を採用し、消去処理（Wi-Fi資格情報・APIキー・設定値・キャッシュ）を全て完了させてから再起動する順序を厳守する（ハードウェアレベルの再起動により、ソフトウェア的な再初期化よりも初期化漏れのリスクを構造的に排除できるため）。
 
-    // ボタンエリアの区切り線
-    M5.Lcd.drawFastHLine(5, 200, 310, TFT_WHITE);
-
-    // ボタンラベル（3分割の左端と右端に配置）
-    M5.Lcd.setTextDatum(middle_center);
-    int margin = 5;
-    int areaWidth = (320 - margin * 2) / 3;
-
-    M5.Lcd.drawString("CANCEL",  margin + areaWidth / 2, 218);
-    M5.Lcd.drawString("CONFIRM", margin + areaWidth * 2 + areaWidth / 2, 218);
-}
-```
-
-**応答の受け取り方式（`ConfirmTarget` enumによる分岐）：**
-
-描画は共通化できるが、CONFIRM押下時に実行する処理は項目ごとに異なる。関数ポインタを渡す方式も検討したが、既に`SystemMode` enumによる状態管理を採用しており設計思想が一貫すること、確認項目が現時点で2つのみであること、可読性・保守性に優れることから、enumによる分岐方式を採用する。
-
-```cpp
-enum ConfirmTarget {
-    CONFIRM_NONE,
-    CONFIRM_RESET,
-    CONFIRM_WIFI,
-    CONFIRM_REFRESH
-};
-
-ConfirmTarget currentConfirm = CONFIRM_NONE;
-
-void handleConfirmDialog() {
-    if (M5.BtnC.wasPressed()) {   // CONFIRM
-        switch (currentConfirm) {
-            case CONFIRM_RESET:
-                executeResetAll();
-                break;
-            case CONFIRM_WIFI:
-                startWiFiConfig();
-                break;
-            case CONFIRM_REFRESH:
-                startFetchFlights();
-                break;
-        }
-        currentConfirm = CONFIRM_NONE;
-    }
-
-    if (M5.BtnA.wasPressed()) {   // CANCEL
-        currentConfirm = CONFIRM_NONE;
-        // 設定画面に戻る
-    }
-}
-```
-
-```cpp
-// src/state_machine.cpp（呼び出し側）
-// RESET ALL の確認
-void showResetConfirm() {
-    drawConfirmDialog("Reset all settings?",
-                      "This will erase Wi-Fi, API key,",
-                      "location, and cached data.");
-}
-
-// Wi-Fi 再設定の確認
-void showWiFiConfirm() {
-    drawConfirmDialog("Change Wi-Fi settings?",
-                      "The current connection will be",
-                      "disconnected.");
-}
-
-// データ再取得の確認
-void showRefreshConfirm() {
-    char remaining[32];
-    sprintf(remaining, "%d requests left.", remainingRequests);
-
-    drawConfirmDialog("Refresh flight data?",
-                      "This will use one API request.",
-                      remaining);
-}
-```
+実装は`state_machine.h`/`.cpp`（`ConfirmTarget` enum、`currentConfirm`、`handleConfirmDialog()`、`executeResetAll()`）を参照。
 
 ### 5.7.3 SCAN RANGE選択画面
 
@@ -2267,7 +1966,7 @@ void loop() {
 
 **遷移元による分岐が必要な画面について：**
 
-同じ画面でも遷移元によって決定後の動作が変わるものがある（現時点ではSCAN RANGE選択画面のみ、5.7.3参照）。この場合、遷移元を記録する変数を個別に用意する。
+同じ画面でも遷移元によって決定後の動作が変わるものがある（SCAN RANGE選択画面：5.7.3参照、確認ダイアログ：5.7.2参照）。この場合、遷移元を記録する変数を個別に用意する（SCAN RANGE選択画面のように専用変数を設ける方式と、確認ダイアログのように遷移元ごとに個別のenum値を用意する方式のいずれも、汎用的な「直前の画面」変数を避けるという考え方は共通している）。
 
 汎用的に「直前の画面」を全画面で保持する方式（`previousMode`等）も考えられるが、以下の理由から現時点では採用しない。
 
