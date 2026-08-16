@@ -9,14 +9,11 @@
 #include <WebServer.h>
 
 // Wi-Fi接続試行のタイムアウト（ミリ秒）
-#define WIFI_CONNECT_TIMEOUT_MS 10000
+// リトライ機構を持たず1回のみの試行とするため、スマートフォンの回線切り替え時間を見込んで長めに確保
+#define WIFI_CONNECT_TIMEOUT_MS 60000
 
 // wifi_handler.cpp で定義されているWebServerインスタンスを共有する
 extern WebServer server;
-
-// Wi-Fi接続失敗時のリトライ回数カウンタ
-// 実体はwifi_handler.cppに定義。web_handler.cpp（/save受信時のリセット）と共有する
-extern int wifiRetryCount;
 
 // APモードを起動し、キャプティブポータル（DNSServer + 302リダイレクト）を開始する
 // ・WiFi.softAP() でAPを起動
@@ -41,7 +38,6 @@ void initWiFi();
 
 // 保存済みの資格情報・ネットワーク設定で、1回分の接続試行を行う
 // 戻り値: true = 接続成功、false = 接続失敗
-// RETRY・機体情報再取得時の再接続等、複数の呼び出し元から呼び出される想定
 bool tryConnectWiFi();
 
 bool isWiFiConnected();

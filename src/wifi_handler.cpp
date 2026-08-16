@@ -18,10 +18,6 @@ DNSServer dnsServer;
 // web_handler.cppと共有するため、wifi_handler.hでextern宣言している
 WebServer server(80);                               // HTTPのみ
 
-// Wi-Fi接続失敗時のリトライ回数カウンタの実体
-// web_handler.cpp（/save受信時のリセット）と共有するため、wifi_handler.hでextern宣言している
-int wifiRetryCount = 0;
-
 // APモードが現在起動中かどうかを示すフラグの実体
 // enterAPMode()でtrue、exitAPMode()でfalseに設定する
 bool apModeActive = false;
@@ -39,7 +35,7 @@ void enterAPMode() {
     // 戻り値で起動成否を判定する（secrets.hの書き換えミス等、実行時の異常検知のため）
     bool apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
     if (!apStarted) {
-        Serial.println("Failed to start AP mode (check secrets.h)");
+        // Serial.println("Failed to start AP mode (check secrets.h)");
     }
 
     // 全ドメインへのDNS問い合わせには自機のIPアドレスを返す
@@ -152,7 +148,7 @@ bool tryConnectWiFi() {
         delay(100);
     }
 
-    Serial.printf("[WIFI] WiFi.status() after attempt = %d (ssid=\"%s\")\n", WiFi.status(), ssid.c_str());
+    // Serial.printf("[WIFI] WiFi.status() after attempt = %d (ssid=\"%s\")\n", WiFi.status(), ssid.c_str());
     bool connected = (WiFi.status() == WL_CONNECTED);
 
     // ------------------------------------------------------
