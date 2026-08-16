@@ -15,7 +15,8 @@
 void setup() {
 
     // シリアル通信の初期化（ボーレートはplatformio.ini/モニタ側の設定と合わせる）※デバッグ用
-    Serial.begin(115200);       Serial.println("[BOOT] Serial initialized");
+    Serial.begin(115200);
+    // Serial.println("[BOOT] Serial initialized");
 
     // M5Stack本体の初期化
     // 起動の高速化および省電力化のため使用しない機能を明示的に無効化する
@@ -27,34 +28,42 @@ void setup() {
     // Wi-Fi関連処理よりも先に記述すること
     // （CoreS3でウォッチドッグタイマーによるリセットがかかりフリーズする既知の現象を回避）
     M5.begin(cfg);
-    M5.Power.begin();           Serial.println("[BOOT] M5.begin() done");
+    M5.Power.begin();
+    // Serial.println("[BOOT] M5.begin() done");
 
-    initStorage();              Serial.println("[BOOT] initStorage() done");
-    initWiFi();                 Serial.println("[BOOT] initWiFi() done");
-    initStateMachine();         Serial.println("[BOOT] initStateMachine() done");
-    Serial.println("[BOOT] setup() complete");
+    initStorage();
+    // Serial.println("[BOOT] initStorage() done");
+    initWiFi();
+    // Serial.println("[BOOT] initWiFi() done");
+    initStateMachine();
+    // Serial.println("[BOOT] initStateMachine() done");
+    // Serial.println("[BOOT] setup() complete");
     
     if (isWiFiConnected()) {
         
-        // printfの%s書式は本来const char*を期待するので.c_str()を明示的に呼ぶ
-        Serial.printf("[BOOT] Wi-Fi connected(%s)\n", WiFi.localIP().toString().c_str());
+        // Serial.print("[BOOT] Wi-Fi connected(");
+        // Serial.print(WiFi.localIP().toString());
+        // Serial.println(")");
 
     }
 
-    // 一時テストコード（起動時分岐ロジックが未実装のため、手順16の動作確認用に
-    // 暫定的にここでAPIキー・基準地点を仮登録し、機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる。
-    // 本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）↓ここから
+    // ★★★一時テストコード↓ここから
+    // // ※起動時分岐ロジックが未実装のため、暫定的にここでAPIキー・基準地点を仮登録し、
+    // // 　機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる。
+    // // 　本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）
+
     // saveApiKey("YOUR_API_KEY_HERE");
-    // Serial.println("[STORAGE] API key saved");
+    // // Serial.println("[STORAGE] API key saved");
 
     // ConfigData config;
     // loadConfig(config);
     // config.lat = 35.68037286903755;              // 東京駅の緯度（テスト用）
     // config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
     // saveConfig(config);
-    // Serial.println("[STORAGE] Base Point saved.");
+    // // Serial.println("[STORAGE] Base Point saved.");
     
-    // updateBatteryLevel();       Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
+    // updateBatteryLevel();
+    // // Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
 
     // struct tm timeInfo;
     // if (syncTime(timeInfo)) {
@@ -68,15 +77,21 @@ void setup() {
     //     parseFlightsResponse(rawJson, foundFlights, totalFlightCount);
     // }
     // unsigned long elapsed = millis() - startTime;
-    // Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
+    // // Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
     // // ここまで計測（JSONパース）
 
     // if (totalFlightCount > 0) {
     //     currentMode = MODE_FLIGHT_VIEW;
-    //     needsRedraw = true;
+    // } else {
+    //     // totalFlightCount == 0の場合、MODE_FLIGHT_VIEWへ遷移させるとcurrentDisplayIndexが
+    //     // -1になり配列範囲外アクセスを引き起こすため、SETTINGSへ直接遷移させる
+    //     // （本来はMODE_NO_FLIGHTS_VIEWへ遷移すべきだが、手順23未実装のための暫定対応）
+    //     currentMode = MODE_MENU_VIEW;
+    //     cursorIndex = 0;
     // }
+    // needsRedraw = true;
 
-    // 一時テストコード（手順16動作確認用）↑ここまで
+    // ★★★一時テストコード↑ここまで
 
 }
 

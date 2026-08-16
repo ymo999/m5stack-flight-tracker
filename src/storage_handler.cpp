@@ -29,7 +29,7 @@ static const char* CACHE_PATH  = "/cache.json";
 // ストレージ機能の初期化（LittleFSのマウントのみ。Preferencesは使用時にbegin/endする）
 bool initStorage() {
     if (!LittleFS.begin()) {
-        Serial.println("LittleFS mount failed");
+        // Serial.println("LittleFS mount failed");
         return false;
     }
     return true;
@@ -140,7 +140,7 @@ bool saveConfig(const ConfigData& config) {
 
     File file = LittleFS.open(CONFIG_PATH, "w");
     if (!file) {
-        Serial.println("Failed to open config.json for writing");
+        // Serial.println("Failed to open config.json for writing");
         return false;
     }
     file.print(newJson);
@@ -171,7 +171,7 @@ bool loadConfig(ConfigData& config) {
     file.close();
 
     if (error) {
-        Serial.println("Failed to parse config.json");
+        // Serial.println("Failed to parse config.json");
         return false;
     }
 
@@ -248,7 +248,7 @@ bool saveCache(const FlightData flights[], int flightCount, int remainingRequest
     // cache.jsonは高頻度書き込みのため差分チェックは行わない
     File file = LittleFS.open(CACHE_PATH, "w");
     if (!file) {
-        Serial.println("Failed to open cache.json for writing");
+        // Serial.println("Failed to open cache.json for writing");
         return false;
     }
     serializeJson(doc, file);
@@ -273,7 +273,7 @@ bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests) {
     file.close();
 
     if (error) {
-        Serial.println("Failed to parse cache.json");
+        // Serial.println("Failed to parse cache.json");
         flightCount = 0;
         return false;
     }
@@ -322,7 +322,7 @@ bool loadRemainingRequests(int& remainingRequests) {
     file.close();
 
     if (error) {
-        Serial.println("Failed to parse cache.json");
+        // Serial.println("Failed to parse cache.json");
         remainingRequests = 0;
         return false;
     }

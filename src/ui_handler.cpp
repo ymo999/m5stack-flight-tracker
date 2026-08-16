@@ -20,16 +20,19 @@ const char* getDirectionLabel(float heading) {
 }
 
 // ============================================================
+// 2桁未満の数値を、先頭に"0"を付けて2桁の文字列にする（ゼロ埋め）
+// sprintf不使用（vfprintf系の実装がリンクされフラッシュ容量を圧迫するため、Stringクラスの機能で代替）
+// ============================================================
+static String padZero2(int value) {
+    return (value < 10) ? ("0" + String(value)) : String(value);
+}
+
+// ============================================================
 // 時刻情報をMM/DD HH:MM形式の文字列に整形する
 // ============================================================
 String formatUpdateTime(const struct tm& timeInfo) {
-    char buf[12];                       // 表示文字+終端文字\0
-    sprintf(buf, "%02d/%02d %02d:%02d",
-            timeInfo.tm_mon + 1,        // tm_monは0始まりのため+1
-            timeInfo.tm_mday,
-            timeInfo.tm_hour,
-            timeInfo.tm_min);
-    return String(buf);
+    return padZero2(timeInfo.tm_mon + 1) + "/" + padZero2(timeInfo.tm_mday) + " "
+         + padZero2(timeInfo.tm_hour) + ":" + padZero2(timeInfo.tm_min);
 }
 
 // ============================================================

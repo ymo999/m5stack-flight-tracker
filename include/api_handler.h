@@ -25,4 +25,9 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
 // 戻り値: true = 同期成功（timeInfoに結果を格納）、false = 同期失敗
 bool syncTime(struct tm& timeInfo);
 
+// 2点間の地表距離を計算する（単位：メートル、Haversine公式）
+// TinyGPSPlusライブラリが提供する同名の静的関数を、この1関数のためだけに
+// ライブラリ全体を依存させることを避けるため、自前実装に置き換えたもの
+double calculateDistanceMeters(double lat1, double lng1, double lat2, double lng2);
+
 #endif

@@ -7,8 +7,8 @@
 
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <math.h>
 #include <time.h>
-#include <TinyGPSPlus.h>
 #include <WiFiClientSecure.h>
 
 #include "storage_handler.h"
@@ -72,8 +72,8 @@ bool fetchFlightsRaw(String& responsePayload) {
     if (success) {
         responsePayload = http.getString();
     } else {
-        Serial.print("AirLabs API request failed, HTTP code: ");
-        Serial.println(httpCode);
+        // Serial.print("AirLabs API request failed, HTTP code: ");
+        // Serial.println(httpCode);
     }
 
     http.end();
@@ -131,13 +131,13 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, rawJson);
     if (error) {
-        Serial.println("Failed to parse flights response");
+        // Serial.println("Failed to parse flights response");
         return;
     }
 
     JsonArray responseArray = doc["response"].as<JsonArray>();
     if (responseArray.isNull()) {
-        Serial.println("Flights response has no 'response' array");
+        // Serial.println("Flights response has no 'response' array");
         return;
     }
 
@@ -170,7 +170,7 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
         }
         double lat = flight["lat"];
         double lng = flight["lng"];
-        data.dist = TinyGPSPlus::distanceBetween(config.lat, config.lng, lat, lng) / 1000.0;
+        data.dist = calculateDistanceMeters(config.lat, config.lng, lat, lng) / 1000.0;
 
         insertFlightByDistance(flights, flightCount, data);
     }
@@ -182,4 +182,23 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
 bool syncTime(struct tm& timeInfo) {
     configTime(9 * 3600, 0, "ntp.nict.jp");     // JST（UTC+9）でNTP同期
     return getLocalTime(&timeInfo);             // timeInfoのアドレスに取得した現在日時を書き込み、取得成否を返す
+}
+
+// ============================================================
+// 2点間の地表距離を計算する（単位：メートル、Haversine公式）
+// ============================================================
+double calculateDistanceMeters(double lat1, double lng1, double lat2, double lng2) {
+
+    const double earthRadiusM = 6371000.0;      // 地球の平均半径（メートル）
+
+    double lat1Rad = radians(lat1);
+    double lat2Rad = radians(lat2);
+    double deltaLatRad = radians(lat2 - lat1);
+    double deltaLngRad = radians(lng2 - lng1);
+
+    double a = sin(deltaLatRad / 2) * sin(deltaLatRad / 2)
+             + cos(lat1Rad) * cos(lat2Rad) * sin(deltaLngRad / 2) * sin(deltaLngRad / 2);
+    double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return earthRadiusM * c;
 }

@@ -109,13 +109,13 @@ void drawFlightView() {
 
     // ------------------------------------------------------
     // DISTANCE（lat/lng欠損時はparseFlightsResponse側で除外済みのため、常に値を持つ）
+    // sprintf不使用（vfprintf系の実装がリンクされフラッシュ容量を圧迫するため、Stringクラスの機能で代替）
     // ------------------------------------------------------
-    char distBuf[16];
-    sprintf(distBuf, "%.1f km", flight.dist);
+    String distText = String(flight.dist, 1) + " km";
     M5.Lcd.setCursor(12, 166);
     M5.Lcd.print("DIST");
     M5.Lcd.setCursor(100, 166);
-    M5.Lcd.print(distBuf);
+    M5.Lcd.print(distText);
 
     // ------------------------------------------------------
     // SQUAWK（レスポンスに含まれる場合のみ表示、それ以外はプレースホルダ）

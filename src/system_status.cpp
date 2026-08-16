@@ -15,6 +15,6 @@ int batteryLevel = -1;
 // ============================================================
 void updateBatteryLevel() {
     batteryLevel = M5.Power.getBatteryLevel();
-    Serial.printf("[TEST] battery: %d\n", batteryLevel);    // 一時テストコード：戻り値確認用
+    // Serial.printf("[TEST] battery: %d\n", batteryLevel);    // 一時テストコード：戻り値確認用
     // 非対応の場合はbatteryLevelを-1のまま維持する
 }

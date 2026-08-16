@@ -52,10 +52,10 @@ void drawConfigView() {
     // LOCATION（緯度・経度）
     M5.Lcd.setCursor(12, 41);
     M5.Lcd.print("LOCATION");
-    char locBuf[24];
-    sprintf(locBuf, "%.3f , %.3f", config.lat, config.lng);
+    // sprintf不使用（vfprintf系の実装がリンクされフラッシュ容量を圧迫するため、Stringクラスの機能で代替）
+    String locStr = String(config.lat, 3) + " , " + String(config.lng, 3);
     M5.Lcd.setCursor(80, 41);
-    M5.Lcd.print(locBuf);
+    M5.Lcd.print(locStr);
 
     // API（マスク済みキー・残数）
     M5.Lcd.setCursor(12, 60);
@@ -63,10 +63,10 @@ void drawConfigView() {
     M5.Lcd.setCursor(80, 60);
     M5.Lcd.print(maskSecret(apiKey));
 
-    char remainBuf[16];
-    sprintf(remainBuf, "(%d left)", remainingRequests);
+    // sprintf不使用（vfprintf系の実装がリンクされフラッシュ容量を圧迫するため、Stringクラスの機能で代替）
+    String remainStr = "(" + String(remainingRequests) + " left)";
     M5.Lcd.setCursor(80, 76);
-    M5.Lcd.print(remainBuf);
+    M5.Lcd.print(remainStr);
 
     // Wi-Fi（SSID・IP・MAC）
     M5.Lcd.setCursor(12, 95);
