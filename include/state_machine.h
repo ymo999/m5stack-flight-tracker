@@ -6,6 +6,10 @@
 #ifndef STATE_MACHINE_H                     // インクルードガード（二重定義防止）
 #define STATE_MACHINE_H
 
+// ------------------------------------------------------
+// 画面状態管理（全画面共通）
+// ------------------------------------------------------
+
 // 画面状態（システムの状態）
 enum SystemMode {
     MODE_WIFI_SETUP,                        // Wi-Fi設定関連（AP接続案内／接続成功／接続失敗）
@@ -20,27 +24,12 @@ enum SystemMode {
     MODE_LOADING                            // データ取得中
 };
 
-// 確認ダイアログの種別
-// 「同一の描画内容でも、遷移元によってCANCEL/CONFIRM後の遷移先が異なる」ケースに対応するため、
-// 遷移元ごとに個別の値を用意する（汎用的な「直前の画面」変数は使わない方針）
-enum ConfirmTarget {
-    CONFIRM_NONE,                           // ダイアログ非表示中
-    CONFIRM_RESET,                          // SETTINGSからのRESET ALL確認
-    CONFIRM_WIFI_SETTINGS,                  // SETTINGSからのWi-Fi再設定確認
-    CONFIRM_WIFI_RECONNECT,                 // 機体再取得時の接続失敗からのWi-Fi再接続確認
-    CONFIRM_REFRESH                         // FLIGHT_VIEW最終機体からのデータ再取得確認
-};
-
 // state_machine.cpp で定義されている現在の画面状態を共有する
 extern SystemMode currentMode;
 
-// state_machine.cpp で定義されている、現在表示中の確認ダイアログの種別を共有する
-// この変数はMODE_CONFIRM_DIALOG以外の状態では意味を持たない（CONFIRM_NONEを想定）
-extern ConfirmTarget currentConfirm;
-
 // 画面の再描画が必要かどうかを示すフラグ
 // currentModeの変化時や、表示内容の更新時にtrueへ設定する
-// 各ハンドラは、このフラグがtrueの時のみ描画処理を実行し、falseに戻す
+// 各画面処理では、このフラグがtrueの時のみ描画処理を実行し、falseに戻す
 // ※毎ループでの再描画は無駄な処理、かつちらつきの原因になるため
 extern bool needsRedraw;
 
@@ -55,8 +44,12 @@ void initStateMachine();
 // loop()から毎回呼び出される想定
 void updateStateMachine();
 
-// 各画面状態（SystemMode）に対応するハンドラ関数
-// 画面の描画・ボタン処理の分岐を担当する（中身は各画面の実装ステップで記述）
+// ------------------------------------------------------
+// 各画面での処理を行うための関数
+// ------------------------------------------------------
+
+// 各画面状態（SystemMode）に対応する処理を行うための関数
+// 画面の描画・ボタン処理の分岐を担当する（中身は各画面の実装で記述）
 void handleWiFiSetupView();                 // Wi-Fi設定関連（AP接続案内／接続成功／接続失敗）
 void handleFlightView();                    // 機体情報表示
 void handleMenuView();                      // 設定メニュー（SETTINGS）
@@ -67,5 +60,71 @@ void handleConfirmDialog();                 // 確認ダイアログ
 void handleErrorView();                     // エラー表示
 void handleNoFlightsView();                 // 機体0件
 void handleLoadingView();                   // データ取得中
+
+// ------------------------------------------------------
+// 確認ダイアログ専用（MODE_CONFIRM_DIALOG）
+// ------------------------------------------------------
+
+// 確認ダイアログの種別
+// 「同一の描画内容でも、遷移元によってCANCEL/CONFIRM後の遷移先が異なる」ケースに対応するため、
+// 遷移元ごとに個別の値を用意する（汎用的な「直前の画面」変数は使わない方針）
+enum ConfirmTarget {
+    CONFIRM_NONE,                           // ダイアログ非表示中
+    CONFIRM_RESET,                          // SETTINGSからのRESET ALL確認
+    CONFIRM_WIFI_SETTINGS,                  // SETTINGSからのWi-Fi再設定確認
+    CONFIRM_WIFI_RECONNECT,                 // 機体再取得時の接続失敗からのWi-Fi再接続確認
+    CONFIRM_REFRESH                         // FLIGHT_VIEW最終機体からのデータ再取得確認
+};
+
+// state_machine.cpp で定義されている、現在表示中の確認ダイアログの種別を共有する
+// この変数はMODE_CONFIRM_DIALOG以外の状態では意味を持たない（CONFIRM_NONEを想定）
+extern ConfirmTarget currentConfirm;
+
+// ------------------------------------------------------
+// SETTINGS画面専用（MODE_MENU_VIEW）
+// ------------------------------------------------------
+
+// SETTINGS画面の項目種別（cursorIndexとの対応付け）
+// 制約：SETTINGS_ITEM_RESET_ALLは常にenumの末尾に置くこと
+// 　　　（SETTINGS_ITEM_COUNTの自動算出、およびsettingsItems[]配列の並び順制約[ui_handler_menu.cpp参照]は
+//      　SETTINGS_ITEM_RESET_ALLが末尾であることを前提としているため）
+enum SettingsItemIndex {
+    SETTINGS_ITEM_LOCATION,                 // LOCATION（基準地点設定）
+    SETTINGS_ITEM_API_KEY,                  // API KEY
+    SETTINGS_ITEM_WIFI,                     // Wi-Fi再設定
+    SETTINGS_ITEM_SCAN_RANGE,               // SCAN RANGE選択
+    SETTINGS_ITEM_SHOW_CONFIG,              // SHOW CONFIG（設定内容一覧）
+    SETTINGS_ITEM_RESET_ALL                 // RESET ALL
+};
+
+// SETTINGS画面の項目数
+// 「末尾の値+1」として自動算出する（新しい項目を追加してもこの行の変更は不要。
+//  ただし追加時は必ずSETTINGS_ITEM_RESET_ALLより前に挿入すること）
+#define SETTINGS_ITEM_COUNT (SETTINGS_ITEM_RESET_ALL + 1)
+
+// SETTINGS画面の1項目分のデータ（enum値と表示文字列のペア）
+struct SettingsItemEntry {
+    SettingsItemIndex index;                // この項目のenum値
+    const char* label;                      // 画面に表示する文字列
+};
+
+// ------------------------------------------------------
+// SCAN RANGE画面専用（MODE_SCAN_RANGE_VIEW）
+// ------------------------------------------------------
+
+// SCAN RANGE画面の遷移元
+// 確認ダイアログのConfirmTargetの考え方を踏襲する
+enum ScanRangeCaller {
+    SCANRANGE_NONE,                         // 未設定（初期値）
+    SCANRANGE_MENU,                         // SETTINGSからの遷移
+    SCANRANGE_NOFLIGHT                      // 機体0件画面からの遷移
+};
+
+// state_machine.cpp で定義されている、SCAN RANGE画面の遷移元を共有する
+// この変数はMODE_SCAN_RANGE_VIEW以外の状態では意味を持たない（SCANRANGE_NONEを想定）
+extern ScanRangeCaller scanRangeCaller;
+
+// SCAN RANGE画面専用のカーソル位置（cursorIndexと区別するため個別で定義）
+extern int scanRangeCursorIndex;
 
 #endif

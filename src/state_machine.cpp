@@ -8,7 +8,7 @@
 #include <M5Unified.h>
 
 #include "flight_data.h"
-#include "storage_handler.h"                // handleConfirmDialog()のloadRemainingRequests()、およびclearWifiCredentials()等（executeResetAll()での全設定消去）で使用
+#include "storage_handler.h"                // 現在の設定値（APIリクエスト残数など）取得や、設定値消去を行うため
 #include "ui_handler.h"
 
 // 現在の画面状態の実体
@@ -20,18 +20,27 @@ SystemMode currentMode = MODE_WIFI_SETUP;
 // MODE_CONFIRM_DIALOG以外の状態では意味を持たないため、初期値はCONFIRM_NONEとする
 ConfirmTarget currentConfirm = CONFIRM_NONE;
 
+// SCAN RANGE画面の遷移元の実体
+// MODE_SCAN_RANGE_VIEW以外の状態では意味を持たないため、初期値はSCANRANGE_NONEとする
+ScanRangeCaller scanRangeCaller = SCANRANGE_NONE;
+
 // 画面の再描画が必要かどうかを示すフラグの実体
 // 起動直後は必ず1回描画するため、初期値はtrueとする
 bool needsRedraw = true;
 
 // 現在アクティブな画面におけるカーソル位置の実体
-// 画面切り替え時に0へリセットするため、初期値の意味は薄いが便宜上0とする
+// 画面切り替え時に0へリセットするが便宜上0で初期化
 int cursorIndex = 0;
+
+// SCAN RANGE画面専用のカーソル位置の実体
+// enterScanRangeCursor()で、現在の設定値の位置に初期化される
+int scanRangeCursorIndex = 0;   
 
 // プロトタイプ宣言
 // state_machine.cpp内でのみ使用する関数
-// （state_machine.hには公開しない。RESET ALL実行処理のため、handleConfirmDialog()より下に実装を配置）
-void executeResetAll();
+// （state_machine.hには公開しない。）
+void resetScanRangeCursor();                // SCAN RANGE画面のカーソル初期化処理のため、handleMenuView()より下に実装を配置
+void executeResetAll();                     // RESET ALL実行処理のため、handleConfirmDialog()より下に実装を配置
 
 // ============================================================
 // 状態管理機構の初期化
@@ -39,11 +48,11 @@ void executeResetAll();
 void initStateMachine() {
     currentMode = MODE_WIFI_SETUP;
     needsRedraw = true;
-    Serial.printf("[INIT] initStateMachine() done. currentMode = %d\n", currentMode);
+    // Serial.printf("[INIT] initStateMachine() done. currentMode = %d\n", currentMode);
 }
 
 // ============================================================
-// 現在の画面状態に応じて、対応するハンドラ関数を呼び出す
+// 現在の画面状態に対応する関数を呼び出す
 // ============================================================
 void updateStateMachine() {
     switch (currentMode) {
@@ -61,7 +70,7 @@ void updateStateMachine() {
 }
 
 // ============================================================
-// 各画面状態（SystemMode）に対応するハンドラ関数
+// 各画面状態（SystemMode）に対応する処理を行う関数
 // 画面の描画・ボタン処理の分岐を担当する
 // ============================================================
 
@@ -82,7 +91,7 @@ void handleFlightView() {
             currentDisplayIndex = totalFlightCount - 1;
         }
         needsRedraw = true;
-        Serial.printf("[BTN] BtnA wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
+        // Serial.printf("[BTN] BtnA wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
         return;
     }
 
@@ -91,10 +100,10 @@ void handleFlightView() {
         if (currentDisplayIndex >= totalFlightCount - 1) {
             currentMode = MODE_CONFIRM_DIALOG;
             currentConfirm = CONFIRM_REFRESH;
-            Serial.printf("[BTN] BtnB wasPressed. currentMode = %d, currentConfirm = %d\n", currentMode, currentConfirm);
+            // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d, currentConfirm = %d\n", currentMode, currentConfirm);
         } else {
             currentDisplayIndex++;
-            Serial.printf("[BTN] BtnB wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
+            // Serial.printf("[BTN] BtnB wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
         }
         needsRedraw = true;
         return;
@@ -105,7 +114,7 @@ void handleFlightView() {
         currentMode = MODE_MENU_VIEW;
         cursorIndex = 0;
         needsRedraw = true;
-        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -115,12 +124,13 @@ void handleFlightView() {
     if (needsRedraw) {
         drawFlightView();
         needsRedraw = false;
-        Serial.println("[VIEW] FLIGHT VIEW redraw");
+        // Serial.println("[VIEW] FLIGHT VIEW redraw");
     }
 }
 
 // 設定メニュー（SETTINGS）
 void handleMenuView() {
+
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
@@ -128,40 +138,56 @@ void handleMenuView() {
         // BACK：機体情報表示画面へ戻る
         currentMode = MODE_FLIGHT_VIEW;
         needsRedraw = true;
-        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
     if (M5.BtnB.wasPressed()) {
         // DOWN：カーソルを1つ下へ。最後（RESET ALL）の次は先頭（LOCATION）へループ
         cursorIndex++;
-        if (cursorIndex >= SETTINGS_TOTAL_ITEM_COUNT) {
+        if (cursorIndex >= SETTINGS_ITEM_COUNT) {
             cursorIndex = 0;
         }
         needsRedraw = true;
-        Serial.printf("[BTN] BtnB wasPressed. cursorIndex = %d\n", cursorIndex);
+        // Serial.printf("[BTN] BtnB wasPressed. cursorIndex = %d\n", cursorIndex);
         return;
     }
 
     if (M5.BtnC.wasPressed()) {
+
+        // デバッグ用
+        int targetOrCaller = 0;
+        
         // SELECT：選択中の項目に応じた画面遷移
-        // TODO：LOCATION・API KEY・SCAN RANGE・RESET ALL（手順21・22・25等）の分岐は未実装
-        // TODO：可読性の観点では、例えばenumや#defineで項目のインデックスに名前を付けた方が良い
-        if (cursorIndex == 2) {                 // Wi-Fi
-            currentMode = MODE_CONFIRM_DIALOG;
-	        currentConfirm = CONFIRM_WIFI_SETTINGS;
-            needsRedraw = true;
+        switch ((SettingsItemIndex)cursorIndex) {
+            case SETTINGS_ITEM_LOCATION:
+                /* TODO : 基準地点設定への遷移（手順25以降で実装） */
+                break;
+            case SETTINGS_ITEM_API_KEY:
+                /* TODO : APIキー設定への遷移（手順25以降で実装） */
+                break;
+            case SETTINGS_ITEM_WIFI:
+                currentMode = MODE_CONFIRM_DIALOG;
+                currentConfirm = CONFIRM_WIFI_SETTINGS;
+                targetOrCaller = currentConfirm;
+                break;
+            case SETTINGS_ITEM_SCAN_RANGE:
+                scanRangeCaller = SCANRANGE_MENU;
+                resetScanRangeCursor();
+                currentMode = MODE_SCAN_RANGE_VIEW;
+                targetOrCaller = scanRangeCaller;
+                break;
+            case SETTINGS_ITEM_SHOW_CONFIG:
+                currentMode = MODE_CONFIG_VIEW;
+                break;
+            case SETTINGS_ITEM_RESET_ALL:
+                currentMode = MODE_CONFIRM_DIALOG;
+                currentConfirm = CONFIRM_RESET;
+                targetOrCaller = currentConfirm;
+                break;
         }
-        if (cursorIndex == 4) {                 // SHOW CONFIG
-            currentMode = MODE_CONFIG_VIEW;
-            needsRedraw = true;
-        }
-        if (cursorIndex == 5) {                 // RESET ALL
-            currentMode = MODE_CONFIRM_DIALOG;
-	        currentConfirm = CONFIRM_RESET;
-            needsRedraw = true;
-        }
-        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, currentConfirm = %d\n", currentMode, currentConfirm);
+        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, targetOrCaller = %d\n", currentMode, targetOrCaller);
+        needsRedraw = true;
         return;
     }
 
@@ -171,7 +197,7 @@ void handleMenuView() {
     if (needsRedraw) {
         drawSettingsView();
         needsRedraw = false;
-        Serial.println("[VIEW] SETTINGS redraw");
+        // Serial.println("[VIEW] SETTINGS redraw");
     }
 }
 
@@ -184,7 +210,7 @@ void handleConfigView() {
         // BACK：設定メニュー画面へ戻る
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
-        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -194,13 +220,64 @@ void handleConfigView() {
     if (needsRedraw) {
         drawConfigView();
         needsRedraw = false;
-        Serial.println("[VIEW] CONFIG redraw");
+        // Serial.println("[VIEW] CONFIG redraw");
     }
 }
 
 // SCAN RANGE選択
 void handleScanRangeView() {
-    /* TODO : 処理内容の記述（SCAN RANGE選択画面の描画・ボタン処理、5.2・5.7.3参照） */
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // ------------------------------------------------------
+    if (M5.BtnA.wasPressed()) {
+        // BACK：遷移元に応じて戻り先を分岐
+        if (scanRangeCaller == SCANRANGE_NOFLIGHT) {
+            /* TODO : 機体0件画面への遷移（手順23実装後に対応）
+            ※機体0件画面ではなくFLIGHT_VIEW画面に戻った方がよいかも（操作が手詰まりになってしまうので。手順23実装時に検討） */
+        } else {
+            currentMode = MODE_MENU_VIEW;
+        }
+        needsRedraw = true;
+        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d, Scan range was not changed.\n", currentMode);
+        return;
+    }
+
+    if (M5.BtnB.wasPressed()) {
+        // DOWN：カーソルを1つ下へ。最後（WIDE）の次は先頭（NARROW）へループ
+        scanRangeCursorIndex++;
+        if (scanRangeCursorIndex >= SCAN_RANGE_ITEM_COUNT) {
+            scanRangeCursorIndex = 0;
+        }
+        needsRedraw = true;
+        // Serial.printf("[BTN] BtnB wasPressed. scanRangeCursorIndex = %d\n", scanRangeCursorIndex);
+        return;
+    }
+
+    if (M5.BtnC.wasPressed()) {
+        // SELECT：選択した範囲を保存し、遷移元に応じて遷移先を分岐
+        ConfigData config;
+        loadConfig(config);
+        config.scanRange = (scanRangeCursorIndex == 1) ? "WIDE" : "NARROW";
+        saveConfig(config);
+
+        if (scanRangeCaller == SCANRANGE_NOFLIGHT) {
+            /* TODO : 再取得処理への遷移（手順23・24実装後に対応） */
+        } else {
+            currentMode = MODE_MENU_VIEW;
+        }
+        needsRedraw = true;
+        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, currentScanRange = %s\n", currentMode, config.scanRange.c_str());
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        drawScanRangeView();
+        needsRedraw = false;
+        // Serial.println("[VIEW] SCAN RANGE redraw");
+    }
 }
 
 // QRコード誘導（APIキー／基準地点）
@@ -227,7 +304,7 @@ void handleConfirmDialog() {
         }
         currentConfirm = CONFIRM_NONE;
         needsRedraw = true;
-        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -249,7 +326,7 @@ void handleConfirmDialog() {
         }
         currentConfirm = CONFIRM_NONE;
         needsRedraw = true;
-        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -276,20 +353,20 @@ void handleConfirmDialog() {
                 int remainingRequests = 0;
                 loadRemainingRequests(remainingRequests);
 
-                char remainBuf[24];
-                sprintf(remainBuf, "%d requests left.", remainingRequests);
+                // sprintf不使用（vfprintf系の実装がリンクされフラッシュ容量を圧迫するため、Stringクラスの機能で代替）
+                String remainMsg = String(remainingRequests) + " requests left.";
 
                 drawConfirmDialog("Refresh flight data?",
                                   "This will use one API request.",
-                                  remainBuf);
-                break;
+                                  remainMsg.c_str());
+                break;  
             }
 
             default:
                 break;
         }
         needsRedraw = false;
-        Serial.printf("[VIEW] CONFIRM DIALOG redraw. currentConfirm = %d\n", currentConfirm);
+        // Serial.printf("[VIEW] CONFIRM DIALOG redraw. currentConfirm = %d\n", currentConfirm);
     }
 }
 
@@ -306,6 +383,15 @@ void handleNoFlightsView() {
 // データ取得中
 void handleLoadingView() {
     /* TODO : 処理内容の記述（ローディング画面の描画、5.2・5.11参照） */
+}
+
+// ============================================================
+// SCAN RANGE画面のカーソル初期化処理（現在の設定値の位置に合わせる）
+// ============================================================
+void resetScanRangeCursor() {
+    ConfigData config;
+    loadConfig(config);
+    scanRangeCursorIndex = (config.scanRange == "WIDE") ? 1 : 0;
 }
 
 // ============================================================
@@ -329,7 +415,7 @@ void executeResetAll() {
     // 機体情報キャッシュ・残りリクエスト数（cache.json）を消去
     clearCache();
 
-    Serial.println("[RESET] All settings cleared. Restarting...");
+    // Serial.println("[RESET] All settings cleared. Restarting...");
 
     // 実機再起動（全グローバル変数・静的変数が確実に初期状態へ戻る）
     ESP.restart();

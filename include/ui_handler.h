@@ -11,9 +11,12 @@
                                             //  ※M5Unified.h自体に多重インクルード防止機構があるため、
                                             //  　各.cpp側で個別にincludeしても問題は生じない
 
-// SETTINGS画面の項目数（複数ファイルから参照されるため定義）
-#define SETTINGS_REGULAR_ITEM_COUNT 5       // RESET ALLを除いた通常項目数（settingsItems[]の要素数と一致）
-#define SETTINGS_TOTAL_ITEM_COUNT 6         // RESET ALLを含めた総項目数（cursorIndexの範囲判定に使用）
+// // SETTINGS画面の項目数（複数ファイルから参照されるため定義）
+// #define SETTINGS_REGULAR_ITEM_COUNT 5       // RESET ALLを除いた通常項目数（settingsItems[]の要素数と一致）
+// #define SETTINGS_TOTAL_ITEM_COUNT 6         // RESET ALLを含めた総項目数（cursorIndexの範囲判定に使用）
+
+// SCAN RANGE画面の項目数（複数ファイルから参照されるため定義）
+#define SCAN_RANGE_ITEM_COUNT 2             // NARROW・WIDEの2項目（scanRangeItems[]の要素数と一致）
 
 // ------------------------------------------------------
 // 文字列・データ変換系ヘルパー（描画を伴わない）
@@ -71,5 +74,8 @@ void drawConfigView();
 // message1 : 詳細説明の1行目
 // message2 : 詳細説明の2行目（不要な場合は nullptr）
 void drawConfirmDialog(const char* title, const char* message1, const char* message2);
+
+// SCAN RANGE選択画面を描画する
+void drawScanRangeView();
 
 #endif
