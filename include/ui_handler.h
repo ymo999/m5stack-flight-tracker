@@ -66,4 +66,10 @@ void drawSettingsView();
 // 設定内容一覧画面（CONFIG）を描画する
 void drawConfigView();
 
+// 確認ダイアログの共通描画関数
+// title    : メインメッセージ（"Change Wi-Fi settings?" 等）
+// message1 : 詳細説明の1行目
+// message2 : 詳細説明の2行目（不要な場合は nullptr）
+void drawConfirmDialog(const char* title, const char* message1, const char* message2);
+
 #endif

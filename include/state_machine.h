@@ -20,8 +20,23 @@ enum SystemMode {
     MODE_LOADING                            // データ取得中
 };
 
+// 確認ダイアログの種別
+// 「同一の描画内容でも、遷移元によってCANCEL/CONFIRM後の遷移先が異なる」ケースに対応するため、
+// 遷移元ごとに個別の値を用意する（汎用的な「直前の画面」変数は使わない方針）
+enum ConfirmTarget {
+    CONFIRM_NONE,                           // ダイアログ非表示中
+    CONFIRM_RESET,                          // SETTINGSからのRESET ALL確認
+    CONFIRM_WIFI_SETTINGS,                  // SETTINGSからのWi-Fi再設定確認
+    CONFIRM_WIFI_RECONNECT,                 // 機体再取得時の接続失敗からのWi-Fi再接続確認
+    CONFIRM_REFRESH                         // FLIGHT_VIEW最終機体からのデータ再取得確認
+};
+
 // state_machine.cpp で定義されている現在の画面状態を共有する
 extern SystemMode currentMode;
+
+// state_machine.cpp で定義されている、現在表示中の確認ダイアログの種別を共有する
+// この変数はMODE_CONFIRM_DIALOG以外の状態では意味を持たない（CONFIRM_NONEを想定）
+extern ConfirmTarget currentConfirm;
 
 // 画面の再描画が必要かどうかを示すフラグ
 // currentModeの変化時や、表示内容の更新時にtrueへ設定する
