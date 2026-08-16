@@ -162,6 +162,51 @@ update :
         outline: 2px solid var(--cyan);
         outline-offset: 2px;
     }
+
+    /* ============================================================
+       パスワード表示切替アイコン
+       ============================================================ */
+    .password-wrap {
+        position: relative;
+    }
+
+    .password-wrap input[type="password"],
+    .password-wrap input[type="text"] {
+        padding-right: 40px;            /* アイコン分の余白を確保 */
+    }
+
+    .password-toggle {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        background: none;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .password-toggle svg {
+        width: 20px;
+        height: 20px;
+        stroke: var(--text-muted);
+        transition: stroke 0.15s ease;
+    }
+
+    .password-toggle:hover svg {
+        stroke: var(--text);
+    }
+
+    .password-toggle:focus-visible {
+        outline: 2px solid var(--cyan);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
 </style>
 </head>
 <body>
@@ -181,9 +226,21 @@ update :
             <input type="text" id="ssid" name="ssid" required>
         </div>
 
+        <!-- パスワード入力欄（アイコンタップで表示/非表示切替） -->
         <div class="field">
             <label for="password">Password</label>
-            <input type="password" id="password" name="password">
+            <div class="password-wrap">
+                <input type="password" id="password" name="password">
+                <button type="button" class="password-toggle" id="passwordToggle"
+                        onclick="togglePasswordVisibility()" aria-label="Show password">
+                    <!-- 初期状態（非表示中）：目に斜線が入ったアイコン -->
+                    <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                </button>
+            </div>
         </div>
 
         <!-- 接続方式（DHCP／静的） -->
@@ -225,6 +282,31 @@ update :
     function toggleStaticFields() {
         const isStatic = document.getElementById("connType").value === "static";
         document.getElementById("staticFields").style.display = isStatic ? "block" : "none";
+    }
+
+    // パスワード欄の表示/非表示を切り替える（type属性の切替＋アイコンSVGの差替）
+    function togglePasswordVisibility() {
+        const input = document.getElementById("password");
+        const button = document.getElementById("passwordToggle");
+        const eyeIcon = document.getElementById("eyeIcon");
+        const isHidden = input.type === "password";
+
+        // 開いた目と閉じた目のパスデータ
+        const eyeOnPaths = `
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+        `;
+
+        const eyeOffPaths = `
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+        `;
+
+        input.type = isHidden ? "text" : "password";
+        button.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
+
+        // 表示中：斜線なしの目のアイコン／非表示中：斜線ありの目のアイコン
+        eyeIcon.innerHTML = isHidden ? eyeOnPaths : eyeOffPaths;
     }
 </script>
 
