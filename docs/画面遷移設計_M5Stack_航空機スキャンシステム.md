@@ -1,6 +1,6 @@
 # 画面遷移設計：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-16**
+**更新日時：2026-08-18**
 
 本ドキュメントは、Figmaで作成したプロトタイプから抽出した画面遷移を、Mermaid形式の状態遷移図としてまとめたものである。実装時（`state_machine.cpp`）の参照資料として使用する。
 
@@ -60,7 +60,7 @@ stateDiagram-v2
     LOADING_WIFI_REFRESH --> LOADING_FETCHING : 自動（Wi-Fi接続完了）
     LOADING_FETCHING --> LOADING_PARSING : 自動（データ受信完了）
     LOADING_PARSING --> FLIGHT_VIEW : 自動（解析完了・1件以上）
-    LOADING_PARSING --> NO_FLIGHTS_NARROW : 自動（0件）
+    LOADING_PARSING --> NO_FLIGHTS_VIEW : 自動（0件）
     LOADING_PARSING --> ERROR_VIEW : 自動（エラー）
     LOADING_WIFI_REFRESH --> CONNECTION_FAILED : 自動（Wi-Fi接続失敗）
 
@@ -69,7 +69,7 @@ stateDiagram-v2
     LOADING_WIFI_REFRESH : LOADING_VIEW_WIFI_REFRESH<br>Connecting to Wi-Fi...
     LOADING_FETCHING : LOADING_VIEW_FETCHING<br>Fetching flight data...
     LOADING_PARSING : LOADING_VIEW_PARSING<br>Processing...
-    NO_FLIGHTS_NARROW : NO_FLIGHTS_VIEW_NARROW<br>0件フローへ
+    NO_FLIGHTS_VIEW : NO_FLIGHTS_VIEW<br>0件フローへ
     ERROR_VIEW : ERROR_VIEW_*<br>エラー表示
     CONNECTION_FAILED : CONNECTION_FAILED_VIEW<br>Wi-Fi再接続フローへ
 ```
@@ -89,21 +89,21 @@ stateDiagram-v2
 stateDiagram-v2
     state "取得結果の判定" as JUDGE
     [*] --> JUDGE
-    JUDGE --> NO_FLIGHTS_NARROW : 0件・SCAN RANGE=NARROW
-    JUDGE --> NO_FLIGHTS_WIDE : 0件・SCAN RANGE=WIDE
+    JUDGE --> NO_FLIGHTS_VIEW : 0件
     JUDGE --> ERROR_NO_CACHE : エラー・キャッシュなし
     JUDGE --> ERROR_WITH_CACHE : エラー・キャッシュあり
 
-    NO_FLIGHTS_NARROW --> SCAN_RANGE_NOFLIGHTS : RANGE [BtnC]
-    SCAN_RANGE_NOFLIGHTS --> LOADING_WIFI_REFRESH : SELECT [BtnC]
-    SCAN_RANGE_NOFLIGHTS --> NO_FLIGHTS_NARROW : BACK [BtnA]
-    NO_FLIGHTS_WIDE --> LOADING_WIFI_REFRESH : RETRY [BtnC]
+    NO_FLIGHTS_VIEW --> LOADING_WIFI_REFRESH : RETRY [BtnB]
+    NO_FLIGHTS_VIEW --> MENU_VIEW : SET [BtnC]
+    MENU_VIEW --> NO_FLIGHTS_VIEW : BACK [BtnA]（0件画面経由時）
+
+    ERROR_NO_CACHE --> LOADING_WIFI_REFRESH : RETRY [BtnB]
     ERROR_NO_CACHE --> MENU_VIEW : SET [BtnC]
+    MENU_VIEW --> ERROR_NO_CACHE : BACK [BtnA]（エラー画面経由時）
+
     ERROR_WITH_CACHE --> FLIGHT_VIEW : BACK [BtnA]
 
-    NO_FLIGHTS_NARROW : NO_FLIGHTS_VIEW_NARROW<br>Try changing SCAN RANGE to WIDE.
-    NO_FLIGHTS_WIDE : NO_FLIGHTS_VIEW_WIDE<br>Try again later.
-    SCAN_RANGE_NOFLIGHTS : SCAN_RANGE_VIEW_NOFLIGHTS<br>範囲選択（0件経由）
+    NO_FLIGHTS_VIEW : NO_FLIGHTS_VIEW<br>No flights found. / Check settings or retry.
     ERROR_NO_CACHE : ERROR_VIEW_NO_CACHE<br>エラー（初回時）
     ERROR_WITH_CACHE : ERROR_VIEW_WITH_CACHE<br>エラー（再取得時）
     LOADING_WIFI_REFRESH : 再取得へ
@@ -113,8 +113,9 @@ stateDiagram-v2
 
 **補足**
 * 0件画面・エラー画面は、いずれも実装上は1画面（`SystemMode`は1つ）であり、状態に応じて表示内容とボタンを出し分ける（5.10参照）。
-* `SCAN_RANGE_VIEW`は遷移元によって`SELECT`後の動作が変わる（5.7.3参照）。0件画面から来た場合はそのまま再取得へ進む。
-* `NO_FLIGHTS_VIEW_WIDE`の`RETRY`は確認ダイアログを挟まない。
+* 0件画面は当初SCAN RANGE設定（NARROW/WIDE）で表示・ボタンを出し分ける設計だったが、機体0件の解決策はSCAN RANGE変更に限らないため、`SET`（SETTINGSへ）に一本化する設計に変更した。これに伴い、0件画面からSCAN RANGE選択画面への直接遷移（`RANGE`ボタン）は廃止した。
+* `MENU_VIEW`の`BACK`は、遷移元（FLIGHT_VIEW／0件画面／エラー画面）によって戻り先が変わる（`MenuCaller`、4章・プロジェクト仕様書5.7参照）。
+* `NO_FLIGHTS_VIEW`・`ERROR_VIEW_NO_CACHE`とも、`RETRY`は確認ダイアログを挟まない。
 
 ---
 
@@ -125,7 +126,7 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
     [*] --> MENU_VIEW
-    MENU_VIEW --> FLIGHT_VIEW : BACK [BtnA]
+    MENU_VIEW --> FLIGHT_VIEW : BACK [BtnA]（通常時）
     MENU_VIEW --> LOADING_LOCATION_SET : LOCATION 選択
     MENU_VIEW --> LOADING_APIKEY_SET : API KEY 選択
     MENU_VIEW --> CONFIRM_WIFI : Wi-Fi 選択
@@ -174,6 +175,7 @@ stateDiagram-v2
 ```
 
 **補足**
+* `MENU_VIEW`の`BACK`は、本図では通常時（FLIGHT_VIEWから遷移してきた場合）のみを示す。0件画面・エラー画面（キャッシュなし）から遷移してきた場合は、それぞれの画面に戻る（3章参照）。
 * `CONFIRM_DIALOG_RESET_ALL`の`CONFIRM`は、全設定（Wi-Fi情報・APIキー・基準地点）および機体情報キャッシュを消去した上で初回起動フローへ遷移する。
 * 設定画面から遷移した`QR_VIEW_*`には`BACK`を表示する（初回起動時との違い、5.8参照）。
 * `SCAN_RANGE_VIEW_SETTINGS`は`SELECT`後もSETTINGSに戻る（再取得しない）。
@@ -234,9 +236,7 @@ stateDiagram-v2
 | Wi-Fi接続失敗画面 | `_INIT` / `_SETTINGS` / `_RECONNECT`（いずれも`BACK`のみ。リトライ機構は設けない） |
 | ローディング | 文脈ごとに複数 |
 | 確認ダイアログ | `_REFRESH` / `_CHANGE_WIFI` / `_RESET_ALL` / `_FAILED_RECONNECT_WIFI` |
-| 機体0件 | `_NARROW` / `_WIDE` |
 | エラー | `_NO_CACHE` / `_WITH_CACHE` |
-| SCAN RANGE選択 | `_SETTINGS` / `_NOFLIGHTS` |
 
 いずれも共通の描画関数に引数を渡す、または状態で分岐する形で実装する。
 
@@ -248,15 +248,17 @@ stateDiagram-v2
 
 ## 7. 遷移表
 
-`state_machine.cpp`の実装と対応する、全遷移の一覧（52件）。
+`state_machine.cpp`の実装と対応する、全遷移の一覧（55件）。
 
-### 7.1 ボタン操作による遷移（35件）
+### 7.1 ボタン操作による遷移（38件）
 
 | 遷移元 | ボタン | 位置 | 遷移先 |
 |---|---|---|---|
 | **FLIGHT_VIEW** | NEXT（最終機体） | BtnB | CONFIRM_DIALOG_REFRESH |
 | FLIGHT_VIEW | SET | BtnC | MENU_VIEW |
-| **MENU_VIEW** | BACK | BtnA | FLIGHT_VIEW |
+| **MENU_VIEW** | BACK（FLIGHT_VIEW経由時） | BtnA | FLIGHT_VIEW |
+| MENU_VIEW | BACK（0件画面経由時） | BtnA | NO_FLIGHTS_VIEW |
+| MENU_VIEW | BACK（エラー画面経由時） | BtnA | ERROR_VIEW_NO_CACHE |
 | MENU_VIEW | SELECT（LOCATION） | BtnC | LOADING_VIEW_LOCATION_SETTINGS |
 | MENU_VIEW | SELECT（API KEY） | BtnC | LOADING_VIEW_APIKEY_SETTINGS |
 | MENU_VIEW | SELECT（Wi-Fi） | BtnC | CONFIRM_DIALOG_CHANGE_WIFI |
@@ -266,11 +268,10 @@ stateDiagram-v2
 | **CONFIG_VIEW** | BACK | BtnA | MENU_VIEW |
 | **SCAN_RANGE_VIEW_SETTINGS** | BACK | BtnA | MENU_VIEW |
 | SCAN_RANGE_VIEW_SETTINGS | SELECT | BtnC | MENU_VIEW |
-| **SCAN_RANGE_VIEW_NOFLIGHTS** | BACK | BtnA | NO_FLIGHTS_VIEW_NARROW |
-| SCAN_RANGE_VIEW_NOFLIGHTS | SELECT | BtnC | LOADING_VIEW_WIFI_REFRESH |
-| **NO_FLIGHTS_VIEW_NARROW** | RANGE | BtnC | SCAN_RANGE_VIEW_NOFLIGHTS |
-| **NO_FLIGHTS_VIEW_WIDE** | RETRY | BtnC | LOADING_VIEW_WIFI_REFRESH |
-| **ERROR_VIEW_NO_CACHE** | SET | BtnC | MENU_VIEW |
+| **NO_FLIGHTS_VIEW** | RETRY | BtnB | LOADING_VIEW_WIFI_REFRESH |
+| NO_FLIGHTS_VIEW | SET | BtnC | MENU_VIEW |
+| **ERROR_VIEW_NO_CACHE** | RETRY | BtnB | LOADING_VIEW_WIFI_REFRESH |
+| ERROR_VIEW_NO_CACHE | SET | BtnC | MENU_VIEW |
 | **ERROR_VIEW_WITH_CACHE** | BACK | BtnA | FLIGHT_VIEW |
 | **CONFIRM_DIALOG_REFRESH** | CANCEL | BtnA | FLIGHT_VIEW |
 | CONFIRM_DIALOG_REFRESH | CONFIRM | BtnC | LOADING_VIEW_WIFI_REFRESH |
@@ -318,7 +319,7 @@ stateDiagram-v2
 | **LOADING_VIEW_FETCHING** | データ受信完了 | LOADING_VIEW_PARSING |
 | LOADING_VIEW_FETCHING | 通信エラー | ERROR_VIEW_* |
 | **LOADING_VIEW_PARSING** | 解析完了（1件以上） | FLIGHT_VIEW |
-| LOADING_VIEW_PARSING | 解析完了（0件） | NO_FLIGHTS_VIEW_* |
+| LOADING_VIEW_PARSING | 解析完了（0件） | NO_FLIGHTS_VIEW |
 | LOADING_VIEW_PARSING | 解析失敗 | ERROR_VIEW_* |
 
 ※プロトタイプ上は成功パターンのみ設定されている。失敗・0件の分岐は実装時に定義する。
