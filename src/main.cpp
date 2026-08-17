@@ -31,6 +31,13 @@ void setup() {
     M5.Power.begin();
     // Serial.println("[BOOT] M5.begin() done");
 
+    // ===== 調査用一時コード（ここから） =====
+    // USB CDC接続の確立を待つための固定待機
+    // モニターが安定接続する前のログ欠落を防ぐための調査用処置
+    // 確認後は削除すること
+    // delay(3000);
+    // ===== 調査用一時コード（ここまで） =====
+    
     initStorage();
     // Serial.println("[BOOT] initStorage() done");
     initWiFi();
@@ -53,17 +60,17 @@ void setup() {
     // // 　本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）
 
     // saveApiKey("YOUR_API_KEY_HERE");
-    // // Serial.println("[STORAGE] API key saved");
+    // Serial.println("[STORAGE] API key saved");
 
     // ConfigData config;
     // loadConfig(config);
     // config.lat = 35.68037286903755;              // 東京駅の緯度（テスト用）
     // config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
     // saveConfig(config);
-    // // Serial.println("[STORAGE] Base Point saved.");
+    // Serial.println("[STORAGE] Base Point saved.");
     
     // updateBatteryLevel();
-    // // Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
+    // Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
 
     // struct tm timeInfo;
     // if (syncTime(timeInfo)) {
@@ -77,7 +84,7 @@ void setup() {
     //     parseFlightsResponse(rawJson, foundFlights, totalFlightCount);
     // }
     // unsigned long elapsed = millis() - startTime;
-    // // Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
+    // Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
     // // ここまで計測（JSONパース）
 
     // if (totalFlightCount > 0) {
