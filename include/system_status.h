@@ -15,4 +15,10 @@ extern int batteryLevel;                    // 電池残量（%）。M5.Power非
 // 関数宣言
 void updateBatteryLevel();
 
+// 現在のM5Stack機種が、物理ボタンを持たない機種か判定する
+// （CoreS3等。タッチによる仮想ボタンでの代替が必要かどうかの判定に使用）
+// 現状対象としている、物理ボタンを持たない機種はCoreS3のみ
+// （将来的に他の機種が対象になった場合は判定を追加すること）
+bool isVirtualButtonBoard();
+
 #endif

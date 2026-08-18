@@ -9,6 +9,7 @@
 
 #include <M5Unified.h>
 
+#include "system_status.h"                  // 物理ボタン有無判定
 #include "ui_handler.h"                     // BUTTON_AREA_*定数（描画側と共通化）
 
 // ============================================================
@@ -34,7 +35,7 @@ void updateTouchButtons() {
     // 1. 非対象機種の早期リターン（Basic等は物理ボタン）
     //    M5.Touch系APIを誤って呼ばないよう、機種判定を先に行う
     // ------------------------------------------------------
-    if (M5.getBoard() != lgfx::boards::board_M5StackCoreS3) {
+    if (!isVirtualButtonBoard()) {
         return;
     }
     if (!M5.Touch.isEnabled()) {

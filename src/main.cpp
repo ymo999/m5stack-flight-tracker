@@ -11,7 +11,7 @@
 #include "secrets.h"                    // AIRLABS_API_KEY（テストコード用、Git管理外）
 #include "state_machine.h"
 #include "storage_handler.h"            // テストコード用
-#include "system_status.h"              // テストコード用（電池アイコン見た目確認用）
+#include "system_status.h"              // 物理ボタンを持たない機種にチャタリング防止措置を適用させるため
 #include "ui_handler.h"
 #include "wifi_handler.h"
 
@@ -34,11 +34,16 @@ void setup() {
     M5.Power.begin();
     // Serial.println("[BOOT] M5.begin() done");
 
-    // ボタンデバウンスを30に設定（チャタリング防止）
-    M5.BtnA.setDebounceThresh(30);
-    M5.BtnB.setDebounceThresh(30);
-    M5.BtnC.setDebounceThresh(30);
-
+    // ボタンデバウンスを30msに設定（チャタリング防止）
+    // 物理ボタンを持たない機種のみ対象（デフォルト値10msだとタッチのノイズを拾いやすいため。
+    // Basic等、物理ボタンのある機種はデフォルトのまま維持する）
+    if (isVirtualButtonBoard())
+    {
+        M5.BtnA.setDebounceThresh(30);
+        M5.BtnB.setDebounceThresh(30);
+        M5.BtnC.setDebounceThresh(30);
+    }
+    
     // ===== 調査用一時コード（ここから） =====
     // USB CDC接続の確立を待つための固定待機
     // モニターが安定接続する前のログ欠落を防ぐための調査用処置

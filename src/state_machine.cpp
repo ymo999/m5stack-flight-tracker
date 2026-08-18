@@ -9,6 +9,7 @@
 
 #include "error_data.h"
 #include "flight_data.h"
+#include "input_handler.h"
 #include "storage_handler.h"                // 現在の設定値（APIリクエスト残数など）取得や、設定値消去を行うため
 #include "ui_handler.h"
 
@@ -85,7 +86,7 @@ void handleFlightView() {
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
-    if (M5.BtnA.wasPressed()) {
+    if (btnAWasPressed()) {
         // PREV：前の機体へ。1機目の場合は最終機体へループ（再取得は促さない）
         currentDisplayIndex--;
         if (currentDisplayIndex < 0) {
@@ -96,7 +97,7 @@ void handleFlightView() {
         return;
     }
 
-    if (M5.BtnB.wasPressed()) {
+    if (btnBWasPressed()) {
         // NEXT：次の機体へ。最終機体の場合は再取得の確認ダイアログへ遷移
         if (currentDisplayIndex >= totalFlightCount - 1) {
             currentMode = MODE_CONFIRM_DIALOG;
@@ -110,7 +111,7 @@ void handleFlightView() {
         return;
     }
 
-    if (M5.BtnC.wasPressed()) {
+    if (btnCWasPressed()) {
     // SET：設定メニュー画面へ（通常の遷移元として記録）
         menuCaller = MENUCALLER_FLIGHT;
         currentMode = MODE_MENU_VIEW;
@@ -140,7 +141,7 @@ void handleMenuView() {
     // デバッグ用
     int targetOrCaller = 0;
 
-    if (M5.BtnA.wasPressed()) {
+    if (btnAWasPressed()) {
         // BACK：遷移元に応じて戻り先を分岐
         switch (menuCaller) {
             case MENUCALLER_NOFLIGHT:
@@ -158,7 +159,7 @@ void handleMenuView() {
         return;
     }
 
-    if (M5.BtnB.wasPressed()) {
+    if (btnBWasPressed()) {
         // DOWN：カーソルを1つ下へ。最後（RESET ALL）の次は先頭（LOCATION）へループ
         cursorIndex++;
         if (cursorIndex >= SETTINGS_ITEM_COUNT) {
@@ -169,7 +170,7 @@ void handleMenuView() {
         return;
     }
 
-    if (M5.BtnC.wasPressed()) {        
+    if (btnCWasPressed()) {        
         // SELECT：選択中の項目に応じた画面遷移
         switch ((SettingsItemIndex)cursorIndex) {
             case SETTINGS_ITEM_LOCATION:
@@ -216,7 +217,7 @@ void handleConfigView() {
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
-    if (M5.BtnA.wasPressed()) {
+    if (btnAWasPressed()) {
         // BACK：設定メニュー画面へ戻る
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
@@ -239,7 +240,7 @@ void handleScanRangeView() {
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
-    if (M5.BtnA.wasPressed()) {
+    if (btnAWasPressed()) {
         // BACK：設定メニュー画面へ戻る（範囲は変更しない）
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
@@ -247,7 +248,7 @@ void handleScanRangeView() {
         return;
     }
 
-    if (M5.BtnB.wasPressed()) {
+    if (btnBWasPressed()) {
         // DOWN：カーソルを1つ下へ。最後（WIDE）の次は先頭（NARROW）へループ
         scanRangeCursorIndex++;
         if (scanRangeCursorIndex >= SCAN_RANGE_ITEM_COUNT) {
@@ -258,7 +259,7 @@ void handleScanRangeView() {
         return;
     }
 
-    if (M5.BtnC.wasPressed()) {
+    if (btnCWasPressed()) {
         // SELECT：選択した範囲を保存し、設定メニュー画面へ戻る
         ConfigData config;
         loadConfig(config);
@@ -288,7 +289,7 @@ void handleQrView() {
 
 // 確認ダイアログ
 void handleConfirmDialog() {
-    if (M5.BtnA.wasPressed()) {
+    if (btnAWasPressed()) {
         // CANCEL：currentConfirmに応じて戻り先を分岐
         switch (currentConfirm) {
             case CONFIRM_RESET:
@@ -309,7 +310,7 @@ void handleConfirmDialog() {
         return;
     }
 
-    if (M5.BtnC.wasPressed()) {
+    if (btnCWasPressed()) {
         // CONFIRM：currentConfirmに応じて実行処理を分岐
         switch (currentConfirm) {
             case CONFIRM_RESET:
@@ -378,7 +379,7 @@ void handleErrorView() {
     // ボタン処理（毎回実行）
     // 機体数を判定条件に入れることにより誤操作でラベル非表示のボタンが押下されてもスルーさせる
     // ------------------------------------------------------
-    if (M5.BtnA.wasPressed()) {
+    if (btnAWasPressed()) {
         // BACK：キャッシュありの場合のみ表示。機体情報表示画面へ戻る
         if (totalFlightCount > 0) {
             currentMode = MODE_FLIGHT_VIEW;
@@ -388,7 +389,7 @@ void handleErrorView() {
         return;
     }
 
-    if (M5.BtnB.wasPressed()) {
+    if (btnBWasPressed()) {
         // RETRY：キャッシュなしの場合のみ表示。確認ダイアログを挟まず、そのまま再取得へ
         if (totalFlightCount == 0) {
             currentMode = MODE_LOADING;
@@ -399,7 +400,7 @@ void handleErrorView() {
         return;
     }
 
-    if (M5.BtnC.wasPressed()) {
+    if (btnCWasPressed()) {
         // SET：キャッシュなしの場合のみ表示。設定メニュー画面へ（エラー画面経由として記録）
         if (totalFlightCount == 0) {
             menuCaller = MENUCALLER_ERROR;
@@ -427,7 +428,7 @@ void handleNoFlightsView() {
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
-    if (M5.BtnB.wasPressed()) {
+    if (btnBWasPressed()) {
         // RETRY：確認ダイアログを挟まず、そのまま再取得へ
         currentMode = MODE_LOADING;
         needsRedraw = true;
@@ -436,7 +437,7 @@ void handleNoFlightsView() {
         return;
     }
 
-    if (M5.BtnC.wasPressed()) {
+    if (btnCWasPressed()) {
         // SET：設定メニュー画面へ（機体0件画面経由として記録）
         menuCaller = MENUCALLER_NOFLIGHT;
         currentMode = MODE_MENU_VIEW;
