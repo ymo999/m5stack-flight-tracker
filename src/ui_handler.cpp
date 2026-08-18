@@ -92,13 +92,12 @@ void initScreenDrawing() {
 // ============================================================
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC) {
 
-    M5.Lcd.setTextColor(TFT_WHITE);                     // 直前の描画で色が変更されていても、ボタンラベルを常に白に固定するため
-    M5.Lcd.drawFastHLine(5, 205, 310, TFT_WHITE);       // ボタンエリアの区切り線
+    M5.Lcd.setTextColor(TFT_WHITE);                                                 // 直前の描画で色が変更されていても、ボタンラベルを常に白に固定するため
+    M5.Lcd.drawFastHLine(BUTTON_AREA_MARGIN, BUTTON_AREA_Y, 310, TFT_WHITE);        // ボタンエリアの区切り線
 
     int y = 220;
-    int margin = 5;
-    int usableWidth = 320 - (margin * 2);   // 310px
-    int areaWidth = usableWidth / 3;
+    int margin = BUTTON_AREA_MARGIN;
+    int areaWidth = BUTTON_AREA_WIDTH;
 
     M5.Lcd.setTextDatum(middle_center);
     if (labelA != nullptr) M5.Lcd.drawString(labelA, margin + areaWidth * 0 + areaWidth / 2, y);

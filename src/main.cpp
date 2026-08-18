@@ -6,6 +6,7 @@
 
 #include "api_handler.h"                // テストコード用
 #include "flight_data.h"                // テストコード用
+#include "input_handler.h"
 #include "state_machine.h"
 #include "storage_handler.h"            // テストコード用
 #include "system_status.h"              // テストコード用（電池アイコン見た目確認用）
@@ -31,6 +32,11 @@ void setup() {
     M5.Power.begin();
     // Serial.println("[BOOT] M5.begin() done");
 
+    // ボタンデバウンスを30に設定（チャタリング防止）
+    M5.BtnA.setDebounceThresh(30);
+    M5.BtnB.setDebounceThresh(30);
+    M5.BtnC.setDebounceThresh(30);
+
     // ===== 調査用一時コード（ここから） =====
     // USB CDC接続の確立を待つための固定待機
     // モニターが安定接続する前のログ欠落を防ぐための調査用処置
@@ -55,48 +61,48 @@ void setup() {
     }
 
     // ★★★一時テストコード↓ここから
-    // // ※起動時分岐ロジックが未実装のため、暫定的にここでAPIキー・基準地点を仮登録し、
-    // // 　機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる。
-    // // 　本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）
+    // ※起動時分岐ロジックが未実装のため、暫定的にここでAPIキー・基準地点を仮登録し、
+    // 　機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる。
+    // 　本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）
 
-    // saveApiKey("YOUR_API_KEY_HERE");
-    // Serial.println("[STORAGE] API key saved");
+    saveApiKey("YOUR_API_KEY_HERE");
+    Serial.println("[STORAGE] API key saved");
 
-    // ConfigData config;
-    // loadConfig(config);
-    // config.lat = 35.68037286903755;              // 東京駅の緯度（テスト用）
-    // config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
-    // saveConfig(config);
-    // Serial.println("[STORAGE] Base Point saved.");
+    ConfigData config;
+    loadConfig(config);
+    config.lat = 35.68037286903755;              // 東京駅の緯度（テスト用）
+    config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
+    saveConfig(config);
+    Serial.println("[STORAGE] Base Point saved.");
     
-    // updateBatteryLevel();
-    // Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
+    updateBatteryLevel();
+    Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
 
-    // struct tm timeInfo;
-    // if (syncTime(timeInfo)) {
-    //     lastUpdateTime = formatUpdateTime(timeInfo);
-    // }
+    struct tm timeInfo;
+    if (syncTime(timeInfo)) {
+        lastUpdateTime = formatUpdateTime(timeInfo);
+    }
 
-    // // ここから計測（JSONパース）
-    // unsigned long startTime = millis();
-    // String rawJson;
-    // if (fetchFlightsRaw(rawJson)) {
-    //     parseFlightsResponse(rawJson, foundFlights, totalFlightCount);
-    // }
-    // unsigned long elapsed = millis() - startTime;
-    // Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
-    // // ここまで計測（JSONパース）
+    // ここから計測（JSONパース）
+    unsigned long startTime = millis();
+    String rawJson;
+    if (fetchFlightsRaw(rawJson)) {
+        parseFlightsResponse(rawJson, foundFlights, totalFlightCount);
+    }
+    unsigned long elapsed = millis() - startTime;
+    Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
+    // ここまで計測（JSONパース）
 
-    // if (totalFlightCount > 0) {
-    //     currentMode = MODE_FLIGHT_VIEW;
-    // } else {
-    //     // totalFlightCount == 0の場合、MODE_FLIGHT_VIEWへ遷移させるとcurrentDisplayIndexが
-    //     // -1になり配列範囲外アクセスを引き起こすため、SETTINGSへ直接遷移させる
-    //     // （本来はMODE_NO_FLIGHTS_VIEWへ遷移すべきだが、手順23未実装のための暫定対応）
-    //     currentMode = MODE_MENU_VIEW;
-    //     cursorIndex = 0;
-    // }
-    // needsRedraw = true;
+    if (totalFlightCount > 0) {
+        currentMode = MODE_FLIGHT_VIEW;
+    } else {
+        // totalFlightCount == 0の場合、MODE_FLIGHT_VIEWへ遷移させるとcurrentDisplayIndexが
+        // -1になり配列範囲外アクセスを引き起こすため、SETTINGSへ直接遷移させる
+        // （本来はMODE_NO_FLIGHTS_VIEWへ遷移すべきだが、手順23未実装のための暫定対応）
+        currentMode = MODE_MENU_VIEW;
+        cursorIndex = 0;
+    }
+    needsRedraw = true;
 
     // ★★★一時テストコード↑ここまで
 
@@ -104,6 +110,7 @@ void setup() {
 
 void loop() {
     M5.update();
+    updateTouchButtons();                       // CoreS3など物理ボタンがない機種の仮想ボタンマッピング
 
     if (isApModeActive()) {
         handleCaptivePortal();
