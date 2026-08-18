@@ -879,6 +879,9 @@ M5Stack Basic（320×240px、ILI9342C）のデフォルトフォント（フォ�
 
 画面状態に応じてボタンの機能・画面ラベルが動的に切り替わる。ラベルは視認性を考慮し英字の短縮表記とする。
 
+**CoreS3での仮想ボタン対応：**
+CoreS3は物理ボタン（BtnA/B/C）を持たない機種であるため、本節の「ボタン」は、Basicでは物理ボタン、CoreS3では画面下部のボタンラベル表示エリアへのタッチ操作を指す。CoreS3向けのタッチ→ボタン変換の実装詳細は7.0.3参照。
+
 **ボタン配置の原則：**
 
 ボタンの位置と役割を以下の通り対応させる。新たな画面を追加する際も、この原則に従う。
@@ -933,6 +936,9 @@ M5Stack Basic（320×240px、ILI9342C）のデフォルトフォント（フォ�
 * ボタンに機能を割り当てない位置は、ラベルを表示せず空白とする。
 * ボタンエリア上部の区切り線も本関数内で描画する共通処理とする。
 * 実装は`ui_handler.h`/`.cpp`の`drawButtonLabels()`を参照。
+
+**ボタンラベル表示エリアの座標定義：**
+* ボタンラベルエリアの座標（区切り線のY座標、左右マージン、1ボタンあたりの幅）は`ui_handler.h`の`BUTTON_AREA_Y`/`BUTTON_AREA_MARGIN`/`BUTTON_AREA_WIDTH`として定義し、描画（`drawButtonLabels()`）とCoreS3のタッチ判定（7.0.3参照）の両方から参照する共通定数とする。
 
 ※旧仕様ではBtnAを「簡易⇔詳細表示の切替」に割り当てていたが、5.3の変更（簡易／詳細表示の一本化）に伴い、BtnAは「前の機体の表示（PREV）」に役割を変更した。これによりBtnA/BtnBで前後双方向に機体を送れるようになる。
 
@@ -1958,6 +1964,30 @@ void setup() {
 * **対策**：`main.cpp`の`setup()`では、常に`M5.begin(cfg)`を最初に呼び出し、その後にWi-Fi接続・APモード起動等の処理を行う。
 * Basic単体では問題が顕在化しない可能性もあるが、Basic／CoreS3共通コードとして開発する方針（0章参照）のため、Basic側の実装でも同じ初期化順序を守る。
 
+### 7.0.3 CoreS3のボタン入力対応（仮想ボタン）
+
+CoreS3は物理ボタン（BtnA/B/C）を持たない機種であり、M5Unifiedも標準ではCoreS3のタッチ操作を`M5.BtnA/B/C`へ変換する機能を提供しない（M5Unified公式Issue #66）。
+
+**採用方式：**
+
+`M5.BtnA/B/C`（`Button_Class`）を経由せず、タッチ座標から押下状態を独自に管理する方式を採用する。検証の結果、`Button_Class.setRawState()`経由での状態反映がこの環境では機能しないことが確認されたため、この方式とした。
+
+* `input_handler.h`/`.cpp`（新規）：タッチ座標（画面下部のボタンラベルエリア、5.2参照）を毎フレーム取得し、前回フレームとの比較で「押された瞬間」を独自に検知する。
+* 判定結果は`btnAWasPressed()`/`btnBWasPressed()`/`btnCWasPressed()`として提供し、内部で物理ボタン（`M5.BtnA.wasPressed()`等）とOR条件で統合する。
+* `state_machine.cpp`側は、`M5.BtnA.wasPressed()`等の代わりにこれらの関数を呼び出す。Basicでは物理ボタンの判定がそのまま機能し、CoreS3ではタッチによる判定が機能する。
+
+**機種判定：**
+
+物理ボタンを持たない機種かどうかの判定は、`system_status.h`/`.cpp`の`isVirtualButtonBoard()`に一元化する（現状の対象機種はCoreS3のみ。将来的に対象機種が増えた場合はこの関数内に判定を追加する）。
+
+**チャタリング対策：**
+
+タッチ操作特有のノイズ（座標の微小な揺らぎ）による誤検知を避けるため、`isVirtualButtonBoard()`が真の場合のみ、`setup()`で`M5.BtnA/B/C.setDebounceThresh(30)`によりデバウンス閾値を30msに引き上げる（デフォルト10ms）。Basicの物理ボタンはデフォルト値のまま維持する。
+
+**呼び出し順序：**
+
+`loop()`内で`M5.update();`の直後に`updateTouchButtons();`を呼び、タッチ座標の取得・状態更新を行う。この処理結果を`updateStateMachine()`側の各ハンドラが参照する。
+
 ### 7.1 ディレクトリ構成
 
 7.0・7.0.1の方針に基づく、機能分割後のディレクトリ構成案を以下に示す。実際のファイル名・分割単位は実装時に確定する。
@@ -1976,7 +2006,9 @@ Your-Project-Folder/
 │   ├── api_handler.h       // API通信関連の関数宣言
 │   ├── ui_handler.h        // UI描画関連の関数宣言
 │   ├── storage_handler.h   // NVS/LittleFSへの保存・読み込み関連の関数宣言
-│   └── state_machine.h     // 状態管理関連の定義・関数宣言
+│   ├── state_machine.h     // 状態管理関連の定義・関数宣言
+│   ├── system_status.h     // 電池残量・機種判定等システム状態関連の関数宣言
+│   └── input_handler.h     // ボタン入力関連の関数宣言（CoreS3のタッチ対応含む、7.0.3参照）
 ├── src/
 │   ├── main.cpp            // メイン（setup, loop のみ）
 │   ├── flight_data.cpp     // FlightData関連グローバル変数の実体定義
@@ -1986,7 +2018,9 @@ Your-Project-Folder/
 │   ├── api_handler.cpp
 │   ├── ui_handler.cpp
 │   ├── storage_handler.cpp
-│   └── state_machine.cpp
+│   ├── state_machine.cpp
+│   ├── system_status.cpp
+│   └── input_handler.cpp
 └── platformio.ini
 ```
 
