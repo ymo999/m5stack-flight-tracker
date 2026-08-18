@@ -7,6 +7,7 @@
 #include "api_handler.h"                // テストコード用
 #include "flight_data.h"                // テストコード用
 #include "input_handler.h"
+#include "secrets.h"                    // AIRLABS_API_KEY（テストコード用、Git管理外）
 #include "state_machine.h"
 #include "storage_handler.h"            // テストコード用
 #include "system_status.h"              // テストコード用（電池アイコン見た目確認用）
@@ -65,7 +66,7 @@ void setup() {
     // 　機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる。
     // 　本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）
 
-    saveApiKey("YOUR_API_KEY_HERE");
+    saveApiKey(AIRLABS_API_KEY);                 // テスト用のAPIキー値はsecrets.hから取得（実運用ではapi_key.htmlからユーザーが入力）
     Serial.println("[STORAGE] API key saved");
 
     ConfigData config;
