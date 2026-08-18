@@ -66,7 +66,7 @@ void drawFlightView() {
     String toText = (flight.to.length() > 0) ? flight.to : "---";
     M5.Lcd.setCursor(12, 71);
     M5.Lcd.print("ROUTE");
-    M5.Lcd.setCursor(100, 71);
+    M5.Lcd.setCursor(104, 71);
     M5.Lcd.print(fromText + " -> " + toText);
 
     // ------------------------------------------------------
@@ -75,7 +75,7 @@ void drawFlightView() {
     String altText = (flight.alt >= 0) ? (addThousandsSeparator(flight.alt) + " m") : "---";
     M5.Lcd.setCursor(12, 90);
     M5.Lcd.print("ALT");
-    M5.Lcd.setCursor(100, 90);
+    M5.Lcd.setCursor(104, 90);
     M5.Lcd.print(altText);
 
     // ------------------------------------------------------
@@ -84,18 +84,18 @@ void drawFlightView() {
     String speedText = (flight.speed >= 0) ? (String(flight.speed) + " km/h") : "---";
     M5.Lcd.setCursor(12, 109);
     M5.Lcd.print("SPEED");
-    M5.Lcd.setCursor(100, 109);
+    M5.Lcd.setCursor(104, 109);
     M5.Lcd.print(speedText);
 
     // ------------------------------------------------------
     // HEADING（-1は欠損値。8方位表記を併記）
     // ------------------------------------------------------
     String headingText = (flight.heading >= 0)
-        ? (String(flight.heading) + " (" + getDirectionLabel(flight.heading) + ")")
+        ? (getDirectionLabel(flight.heading) + String(" (") + String(flight.heading) + ")")
         : "---";
     M5.Lcd.setCursor(12, 128);
     M5.Lcd.print("HEADING");
-    M5.Lcd.setCursor(100, 128);
+    M5.Lcd.setCursor(104, 128);
     M5.Lcd.print(headingText);
 
     // ------------------------------------------------------
@@ -104,7 +104,7 @@ void drawFlightView() {
     String typeText = (flight.type.length() > 0) ? flight.type : "---";
     M5.Lcd.setCursor(12, 147);
     M5.Lcd.print("TYPE");
-    M5.Lcd.setCursor(100, 147);
+    M5.Lcd.setCursor(104, 147);
     M5.Lcd.print(typeText);
 
     // ------------------------------------------------------
@@ -114,7 +114,7 @@ void drawFlightView() {
     String distText = String(flight.dist, 1) + " km";
     M5.Lcd.setCursor(12, 166);
     M5.Lcd.print("DIST");
-    M5.Lcd.setCursor(100, 166);
+    M5.Lcd.setCursor(104, 166);
     M5.Lcd.print(distText);
 
     // ------------------------------------------------------
@@ -123,7 +123,7 @@ void drawFlightView() {
     String squawkText = (flight.squawk.length() > 0) ? flight.squawk : "---";
     M5.Lcd.setCursor(12, 185);
     M5.Lcd.print("SQUAWK");
-    M5.Lcd.setCursor(100, 185);
+    M5.Lcd.setCursor(104, 185);
     M5.Lcd.print(squawkText);
 
     // ------------------------------------------------------
@@ -131,21 +131,21 @@ void drawFlightView() {
     // ------------------------------------------------------
     if (flight.flightIcao.length() > 0) {
         String flightAwareUrl = "https://flightaware.com/live/flight/" + flight.flightIcao;
-        M5.Lcd.qrcode(flightAwareUrl.c_str(), 218, 71, 90, 2);
+        M5.Lcd.qrcode(flightAwareUrl.c_str(), 218, 90, 90, 2);
     } else {
         M5.Lcd.setTextDatum(middle_center);
-        M5.Lcd.drawString("---", 263, 116);
+        M5.Lcd.drawString("---", 263, 135);
         M5.Lcd.setTextDatum(top_left);
     }
 
     // ------------------------------------------------------
     // 通し番号（QRコード下）
     // ------------------------------------------------------
-    M5.Lcd.setCursor(233, 166);
+    M5.Lcd.setCursor(233, 185);
     M5.Lcd.print(currentDisplayIndex + 1);
-    M5.Lcd.setCursor(260, 166);
+    M5.Lcd.setCursor(260, 185);
     M5.Lcd.print("of");
-    M5.Lcd.setCursor(283, 166);
+    M5.Lcd.setCursor(283, 185);
     M5.Lcd.print(totalFlightCount);
 
     // ------------------------------------------------------
