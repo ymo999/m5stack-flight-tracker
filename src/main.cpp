@@ -50,10 +50,10 @@ void setup() {
     // 確認後は削除すること
 
     // ミリ秒単位で時間を測定
-    uint32_t startTime = millis();
+    uint32_t serialWaitStartTime = millis();
     
     // 「シリアル未準備」かつ「開始から3秒以内」の間ループする
-    while (!Serial && (millis() - startTime < 3000)) {
+    while (!Serial && (millis() - serialWaitStartTime < 3000)) {
         delay(100);                         // 接続を待つ
     }
     // ===== 調査用一時コード（ここまで） =====
