@@ -5,6 +5,7 @@
 #include <WiFi.h>
 
 #include "api_handler.h"                // テストコード用
+#include "error_data.h"                 // テストコード用（エラー画面確認用）
 #include "flight_data.h"                // テストコード用
 #include "input_handler.h"
 #include "secrets.h"                    // AIRLABS_API_KEY（テストコード用、Git管理外）
@@ -66,13 +67,16 @@ void setup() {
     // 　機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる。
     // 　本来はAPIキー・基準地点の登録状況に応じた分岐（QR_VIEW等）が必要。8.2-C実装時に置き換え予定）
 
-    saveApiKey(AIRLABS_API_KEY);                 // テスト用のAPIキー値はsecrets.hから取得（実運用ではapi_key.htmlからユーザーが入力）
+    saveApiKey(AIRLABS_API_KEY);
+    // saveApiKey("apikeytest1234567890");                     // APIリクエストエラー検証用 ※値書き換え不要
     Serial.println("[STORAGE] API key saved");
 
     ConfigData config;
     loadConfig(config);
     config.lat = 35.68037286903755;              // 東京駅の緯度（テスト用）
     config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
+    // config.lat = 0;                              // ヌル島の緯度（機体0件テスト用）
+    // config.lng = 0;                              // ヌル島の経度（機体0件テスト用）
     saveConfig(config);
     Serial.println("[STORAGE] Base Point saved.");
     
@@ -94,14 +98,21 @@ void setup() {
     Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
     // ここまで計測（JSONパース）
 
-    if (totalFlightCount > 0) {
-        currentMode = MODE_FLIGHT_VIEW;
+    // 画面遷移テスト用
+    bool errorTest = false;                 // テストの内容に応じて書き換え
+
+    if (errorTest) {
+        // エラー画面の表示確認用
+        currentError.message = "Missing api_key";
+        currentError.code = "wrong_params";
+        currentMode = MODE_ERROR_VIEW;
     } else {
-        // totalFlightCount == 0の場合、MODE_FLIGHT_VIEWへ遷移させるとcurrentDisplayIndexが
-        // -1になり配列範囲外アクセスを引き起こすため、SETTINGSへ直接遷移させる
-        // （本来はMODE_NO_FLIGHTS_VIEWへ遷移すべきだが、手順23未実装のための暫定対応）
-        currentMode = MODE_MENU_VIEW;
-        cursorIndex = 0;
+        if (totalFlightCount > 0) {
+            currentMode = MODE_FLIGHT_VIEW;
+        } else {
+            // 手順23実装により、機体0件画面へ直接遷移させる
+            currentMode = MODE_NO_FLIGHTS_VIEW;
+        }
     }
     needsRedraw = true;
 

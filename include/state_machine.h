@@ -108,21 +108,22 @@ struct SettingsItemEntry {
     const char* label;                      // 画面に表示する文字列
 };
 
+// SETTINGS画面の遷移元
+// 確認ダイアログのConfirmTargetの考え方を踏襲する
+enum MenuCaller {
+    MENUCALLER_NONE,                        // 未設定（初期値）
+    MENUCALLER_FLIGHT,                      // 機体情報表示（FLIGHT_VIEW）からの遷移
+    MENUCALLER_NOFLIGHT,                     // 機体0件画面からの遷移
+    MENUCALLER_ERROR                        // エラー画面（キャッシュなし）からの遷移
+};
+
+// state_machine.cpp で定義されている、SETTINGS画面の遷移元を共有する
+// この変数はMODE_MENU_VIEW以外の状態では意味を持たない（MENUCALLER_NONEを想定）
+extern MenuCaller menuCaller;
+
 // ------------------------------------------------------
 // SCAN RANGE画面専用（MODE_SCAN_RANGE_VIEW）
 // ------------------------------------------------------
-
-// SCAN RANGE画面の遷移元
-// 確認ダイアログのConfirmTargetの考え方を踏襲する
-enum ScanRangeCaller {
-    SCANRANGE_NONE,                         // 未設定（初期値）
-    SCANRANGE_MENU,                         // SETTINGSからの遷移
-    SCANRANGE_NOFLIGHT                      // 機体0件画面からの遷移
-};
-
-// state_machine.cpp で定義されている、SCAN RANGE画面の遷移元を共有する
-// この変数はMODE_SCAN_RANGE_VIEW以外の状態では意味を持たない（SCANRANGE_NONEを想定）
-extern ScanRangeCaller scanRangeCaller;
 
 // SCAN RANGE画面専用のカーソル位置（cursorIndexと区別するため個別で定義）
 extern int scanRangeCursorIndex;

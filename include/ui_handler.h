@@ -89,4 +89,12 @@ void drawConfirmDialog(const char* title, const char* message1, const char* mess
 // SCAN RANGE選択画面を描画する
 void drawScanRangeView();
 
+// エラー画面を描画する
+// message : レスポンスのerror.message（またはHTTP/パースエラー時の自前文字列）
+// code    : レスポンスのerror.code（同上）
+void drawErrorView(const char* message, const char* code);
+
+// 機体0件画面を描画する
+void drawNoFlightsView();
+
 #endif

@@ -7,6 +7,7 @@
 
 #include <M5Unified.h>
 
+#include "error_data.h"
 #include "flight_data.h"
 #include "storage_handler.h"                // 現在の設定値（APIリクエスト残数など）取得や、設定値消去を行うため
 #include "ui_handler.h"
@@ -20,9 +21,9 @@ SystemMode currentMode = MODE_WIFI_SETUP;
 // MODE_CONFIRM_DIALOG以外の状態では意味を持たないため、初期値はCONFIRM_NONEとする
 ConfirmTarget currentConfirm = CONFIRM_NONE;
 
-// SCAN RANGE画面の遷移元の実体
-// MODE_SCAN_RANGE_VIEW以外の状態では意味を持たないため、初期値はSCANRANGE_NONEとする
-ScanRangeCaller scanRangeCaller = SCANRANGE_NONE;
+// SETTINGS画面の遷移元の実体
+// MODE_MENU_VIEW以外の状態では意味を持たないため、初期値はMENUCALLER_NONEとする
+MenuCaller menuCaller = MENUCALLER_NONE;  
 
 // 画面の再描画が必要かどうかを示すフラグの実体
 // 起動直後は必ず1回描画するため、初期値はtrueとする
@@ -110,7 +111,8 @@ void handleFlightView() {
     }
 
     if (M5.BtnC.wasPressed()) {
-        // SET：設定メニュー画面へ
+    // SET：設定メニュー画面へ（通常の遷移元として記録）
+        menuCaller = MENUCALLER_FLIGHT;
         currentMode = MODE_MENU_VIEW;
         cursorIndex = 0;
         needsRedraw = true;
@@ -134,9 +136,23 @@ void handleMenuView() {
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
+
+    // デバッグ用
+    int targetOrCaller = 0;
+
     if (M5.BtnA.wasPressed()) {
-        // BACK：機体情報表示画面へ戻る
-        currentMode = MODE_FLIGHT_VIEW;
+        // BACK：遷移元に応じて戻り先を分岐
+        switch (menuCaller) {
+            case MENUCALLER_NOFLIGHT:
+                currentMode = MODE_NO_FLIGHTS_VIEW;
+                break;
+            case MENUCALLER_ERROR:
+                currentMode = MODE_ERROR_VIEW;
+                break;
+            default:
+                currentMode = MODE_FLIGHT_VIEW;
+                break;
+        }
         needsRedraw = true;
         // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
@@ -153,11 +169,7 @@ void handleMenuView() {
         return;
     }
 
-    if (M5.BtnC.wasPressed()) {
-
-        // デバッグ用
-        int targetOrCaller = 0;
-        
+    if (M5.BtnC.wasPressed()) {        
         // SELECT：選択中の項目に応じた画面遷移
         switch ((SettingsItemIndex)cursorIndex) {
             case SETTINGS_ITEM_LOCATION:
@@ -172,10 +184,8 @@ void handleMenuView() {
                 targetOrCaller = currentConfirm;
                 break;
             case SETTINGS_ITEM_SCAN_RANGE:
-                scanRangeCaller = SCANRANGE_MENU;
                 resetScanRangeCursor();
                 currentMode = MODE_SCAN_RANGE_VIEW;
-                targetOrCaller = scanRangeCaller;
                 break;
             case SETTINGS_ITEM_SHOW_CONFIG:
                 currentMode = MODE_CONFIG_VIEW;
@@ -186,8 +196,8 @@ void handleMenuView() {
                 targetOrCaller = currentConfirm;
                 break;
         }
-        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, targetOrCaller = %d\n", currentMode, targetOrCaller);
         needsRedraw = true;
+        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, targetOrCaller = %d\n", currentMode, targetOrCaller);
         return;
     }
 
@@ -230,13 +240,8 @@ void handleScanRangeView() {
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
     if (M5.BtnA.wasPressed()) {
-        // BACK：遷移元に応じて戻り先を分岐
-        if (scanRangeCaller == SCANRANGE_NOFLIGHT) {
-            /* TODO : 機体0件画面への遷移（手順23実装後に対応）
-            ※機体0件画面ではなくFLIGHT_VIEW画面に戻った方がよいかも（操作が手詰まりになってしまうので。手順23実装時に検討） */
-        } else {
-            currentMode = MODE_MENU_VIEW;
-        }
+        // BACK：設定メニュー画面へ戻る（範囲は変更しない）
+        currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
         // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d, Scan range was not changed.\n", currentMode);
         return;
@@ -254,17 +259,13 @@ void handleScanRangeView() {
     }
 
     if (M5.BtnC.wasPressed()) {
-        // SELECT：選択した範囲を保存し、遷移元に応じて遷移先を分岐
+        // SELECT：選択した範囲を保存し、設定メニュー画面へ戻る
         ConfigData config;
         loadConfig(config);
         config.scanRange = (scanRangeCursorIndex == 1) ? "WIDE" : "NARROW";
         saveConfig(config);
 
-        if (scanRangeCaller == SCANRANGE_NOFLIGHT) {
-            /* TODO : 再取得処理への遷移（手順23・24実装後に対応） */
-        } else {
-            currentMode = MODE_MENU_VIEW;
-        }
+        currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
         // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, currentScanRange = %s\n", currentMode, config.scanRange.c_str());
         return;
@@ -372,12 +373,87 @@ void handleConfirmDialog() {
 
 // エラー表示
 void handleErrorView() {
-    /* TODO : 処理内容の記述（エラー画面の描画・ボタン処理、5.2・5.10参照） */
+
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // 機体数を判定条件に入れることにより誤操作でラベル非表示のボタンが押下されてもスルーさせる
+    // ------------------------------------------------------
+    if (M5.BtnA.wasPressed()) {
+        // BACK：キャッシュありの場合のみ表示。機体情報表示画面へ戻る
+        if (totalFlightCount > 0) {
+            currentMode = MODE_FLIGHT_VIEW;
+            needsRedraw = true;
+        }
+        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        return;
+    }
+
+    if (M5.BtnB.wasPressed()) {
+        // RETRY：キャッシュなしの場合のみ表示。確認ダイアログを挟まず、そのまま再取得へ
+        if (totalFlightCount == 0) {
+            currentMode = MODE_LOADING;
+            needsRedraw = true;
+            /* TODO : 再取得処理の開始（手順24実装後に対応） */
+        }
+        // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
+        return;
+    }
+
+    if (M5.BtnC.wasPressed()) {
+        // SET：キャッシュなしの場合のみ表示。設定メニュー画面へ（エラー画面経由として記録）
+        if (totalFlightCount == 0) {
+            menuCaller = MENUCALLER_ERROR;
+            currentMode = MODE_MENU_VIEW;
+            cursorIndex = 0;
+            needsRedraw = true;
+        }
+        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        drawErrorView(currentError.message.c_str(), currentError.code.c_str());
+        needsRedraw = false;
+        // Serial.println("[VIEW] ERROR redraw");
+    }
 }
 
 // 機体0件
 void handleNoFlightsView() {
-    /* TODO : 処理内容の記述（機体0件画面の描画・ボタン処理、5.2・5.10参照） */
+
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // ------------------------------------------------------
+    if (M5.BtnB.wasPressed()) {
+        // RETRY：確認ダイアログを挟まず、そのまま再取得へ
+        currentMode = MODE_LOADING;
+        needsRedraw = true;
+        /* TODO : 再取得処理の開始（手順24実装後に対応） */
+        // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
+        return;
+    }
+
+    if (M5.BtnC.wasPressed()) {
+        // SET：設定メニュー画面へ（機体0件画面経由として記録）
+        menuCaller = MENUCALLER_NOFLIGHT;
+        currentMode = MODE_MENU_VIEW;
+        cursorIndex = 0;
+        needsRedraw = true;
+        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        drawNoFlightsView();
+        needsRedraw = false;
+        // Serial.println("[VIEW] NO FLIGHTS redraw");
+    }
 }
 
 // データ取得中
