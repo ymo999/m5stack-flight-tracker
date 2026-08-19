@@ -1,6 +1,6 @@
 # 画面遷移設計：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-18**
+**更新日時：2026-08-19**
 
 本ドキュメントは、Figmaで作成したプロトタイプから抽出した画面遷移を、Mermaid形式の状態遷移図としてまとめたものである。実装時（`state_machine.cpp`）の参照資料として使用する。
 
@@ -78,6 +78,7 @@ stateDiagram-v2
 * `PREV`（BtnA）は同一画面内での機体送りのため、画面遷移は発生しない。1機目で押した場合は最終機体へループする（5.2参照）。
 * `NEXT`は最終機体で押した場合のみ確認ダイアログへ遷移する。それ以外は同一画面内での機体送り。
 * ローディング画面からの分岐（成功／0件／エラー）は、プロトタイプ上は成功パターンのみ設定されている。
+* **`LOADING_WIFI_REFRESH`からの`CONNECTION_FAILED_VIEW`への遷移（Wi-Fi再接続フロー、5章参照）は、当該画面が未実装のため、現時点では暫定的に`ERROR_VIEW`へ遷移する。** 手順25（Wi-Fi設定関連画面）の実装時に、本来の遷移へ差し替えること（プロジェクト仕様書5.11参照）。
 
 ---
 
@@ -116,6 +117,7 @@ stateDiagram-v2
 * 0件画面は当初SCAN RANGE設定（NARROW/WIDE）で表示・ボタンを出し分ける設計だったが、機体0件の解決策はSCAN RANGE変更に限らないため、`SET`（SETTINGSへ）に一本化する設計に変更した。これに伴い、0件画面からSCAN RANGE選択画面への直接遷移（`RANGE`ボタン）は廃止した。
 * `MENU_VIEW`の`BACK`は、遷移元（FLIGHT_VIEW／0件画面／エラー画面）によって戻り先が変わる（`MenuCaller`、4章・プロジェクト仕様書5.7参照）。
 * `NO_FLIGHTS_VIEW`・`ERROR_VIEW_NO_CACHE`とも、`RETRY`は確認ダイアログを挟まない。
+* 上記の判定に加え、**暫定措置としてWi-Fi接続失敗時も`ERROR_VIEW`へ遷移する**（2章の補足参照）。この場合も、キャッシュの有無によるボタンの出し分けは通常のエラー時と同じ扱いとなる。
 
 ---
 
@@ -315,7 +317,7 @@ stateDiagram-v2
 | **QR_VIEW_APIKEY_SETTINGS** | APIキー登録・検証成功 | MENU_VIEW（Wi-Fi切断） |
 | **QR_VIEW_LOCATION_SETTINGS** | 基準地点登録完了 | MENU_VIEW（Wi-Fi切断） |
 | **LOADING_VIEW_WIFI_REFRESH** | Wi-Fi接続成功 | LOADING_VIEW_FETCHING |
-| LOADING_VIEW_WIFI_REFRESH | Wi-Fi接続失敗 | CONNECTION_FAILED_VIEW |
+| LOADING_VIEW_WIFI_REFRESH | Wi-Fi接続失敗 | CONNECTION_FAILED_VIEW ※現時点は暫定的にERROR_VIEW_*（2章の補足参照） |
 | **LOADING_VIEW_FETCHING** | データ受信完了 | LOADING_VIEW_PARSING |
 | LOADING_VIEW_FETCHING | 通信エラー | ERROR_VIEW_* |
 | **LOADING_VIEW_PARSING** | 解析完了（1件以上） | FLIGHT_VIEW |

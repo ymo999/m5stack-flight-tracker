@@ -1,6 +1,6 @@
 # プロジェクト仕様書：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-18**
+**更新日時：2026-08-19**
 
 本仕様書は、M5Stack（ESP32）を使用した「位置情報を基準にした周辺航空機のライブスキャンシステム」の開発プロジェクト仕様をまとめたものである。
 APIとして「AirLabs API」を採用し、Wi-Fi接続のハードコーディング回避策やデバイス上でのパース・表示処理について定義する。
@@ -330,9 +330,11 @@ data/
 
 AirLabs APIのレスポンスには、無料枠に対する残りリクエスト数の情報が含まれる。この値をデバイス側で保持し、ユーザーが確認できるようにする。
 
+* **取得元**：レスポンスの`request.key.limits_total`。ping（3.4.1参照）ではなく、機体情報取得（`/flights`）のレスポンスから取得する。
 * **取得タイミング**：AirLabs APIへのリクエストが成功するたびに、レスポンスに含まれる残りリクエスト数の値で上書き保持する（常に最後に取得した値を保持する）。
 * **保存方式**：機体情報キャッシュ（2.4参照）・取得地点情報（4.3参照）と同様、LittleFS + JSONに保存する（変更可能性あり）。
 * **参照方法**：設定内容一覧画面（CONFIG）から参照できるようにする（5.7.1参照）。表記は `842 left` の形式とする。
+* **値の反映遅延について**：実機検証において、連続してリクエストした際に`limits_total`の値が即座に減らない、あるいは次回まとめて減るケースが確認されている。AirLabs側の集計タイミングによるものと推測され、実装上の対処は行わない（残数が0に近い状況でなければ実害がないため）。
 
 ---
 
@@ -1634,7 +1636,7 @@ APIリクエストの結果に応じて表示する画面。AirLabs APIへのリ
 | HTTP通信エラー | エラー画面（流用） | 自前の文字列（例：`message: HTTP request failed` / `code: http_error`） |
 | JSONパース失敗 | エラー画面（流用） | 自前の文字列（例：`message: JSON parse failed` / `code: parse_error`） |
 | 取得結果が0件 | 機体0件画面 | エラーではないため別画面とする |
-| Wi-Fi接続失敗 | Wi-Fi設定関連画面（5.9参照） | `Connection Failed.` |
+| Wi-Fi接続失敗 | Wi-Fi設定関連画面（5.9参照）<br>※現時点は暫定的にエラー画面（5.11参照） | `Connection Failed.`<br>※暫定措置中は自前の文字列（`message: Wi-Fi connection failed` / `code: wifi_failed`） |
 
 #### 5.10.1 エラー画面
 
@@ -1647,6 +1649,12 @@ APIリクエストの結果に応じて表示する画面。AirLabs APIへのリ
 // AirLabsのエラーレスポンス例
 {"error":{"message":"Missing api_key","code":"wrong_params"}}
 ```
+
+**AirLabs APIエラーの検出方法：**
+
+AirLabsは、APIキー不正等のエラー時も**HTTPステータス200を返す**ため、HTTPステータスによる判定では検出できない。レスポンスJSONに`error`オブジェクトが含まれるかどうかで判定する。判定はJSON解析処理内で行い、検出した`message`/`code`をそのまま画面表示へ渡す。
+
+※この検出を行わない場合、APIキー不正時のレスポンスが「機体0件」として扱われ、機体0件画面が表示されてしまう（実装当初に実際に発生していた）。
 
 **レイアウト：**
 ```
@@ -1682,7 +1690,7 @@ APIリクエストの結果に応じて表示する画面。AirLabs APIへのリ
 * `RETRY`を設ける理由：`SET`のみだと、SETTINGSから`BACK`で本画面に戻ってきた際に再度アクションする手段がなく手詰まりになるため（機体0件画面と同じ考え方、5.10.2参照）。`SET`経由でSETTINGSに入った場合の`BACK`の戻り先は本画面自身であり（5.7参照）、その戻り先で再取得できるようにする狙いがある。
 * ボタン位置は5.2節の原則（左端＝戻る／右端＝進む）に従う。`RETRY`は中央（BtnB）に配置する。
 
-実装は`error_data.h`/`.cpp`（`ErrorData`、`currentError`）、`ui_handler_error.cpp`（`drawErrorView()`）、`state_machine.cpp`（`handleErrorView()`）を参照。
+実装は`error_data.h`/`.cpp`（`ErrorData`、`currentError`）、`api_handler.cpp`（`parseFlightsResponse()`）、`ui_handler_error.cpp`（`drawErrorView()`）、`state_machine.cpp`（`handleErrorView()`）を参照。
 
 #### 5.10.2 機体0件画面
 
@@ -1724,21 +1732,6 @@ APIリクエスト処理中に表示する画面。Wi-Fi接続（1〜5秒）、H
 | APIリクエスト前 | `Fetching flight data...` |
 | パース前 | `Processing...` |
 
-```cpp
-void fetchFlightsWithProgress() {
-    drawLoadingScreen("Connecting to Wi-Fi...");
-    connectWiFi();                               // ここでブロック
-
-    drawLoadingScreen("Fetching flight data...");
-    String response = requestFlights();           // ここでブロック
-
-    drawLoadingScreen("Processing...");
-    parseFlights(response);
-
-    WiFi.disconnect(true);
-}
-```
-
 **レイアウト：**
 ```
 +--------------------------------------------+
@@ -1757,12 +1750,6 @@ void fetchFlightsWithProgress() {
 * **下部の仕切り線は残す**。ボタンラベルは表示しないが、レイアウトの安定性（FLIGHT_VIEWからの遷移時にちらつかない）と、「ボタンエリアは存在するが一時的に使用できない」状態を示すため。
 * メッセージは画面中央に配置する。
 
-```cpp
-// ローディング画面の共通描画関数
-// message : 現在の処理内容（"Connecting to Wi-Fi..." 等）
-void drawLoadingScreen(const char* message);
-```
-
 **同期処理での実装（非同期処理は不要）：**
 
 本画面はブロッキング処理の**前**に描画するため、非同期処理（RTOSタスク、コールバック等）は不要である。描画は数ms〜数十msで完了し、その表示が残ったままブロッキング処理に入り、処理が終われば次のメッセージに切り替わる。
@@ -1771,25 +1758,24 @@ void drawLoadingScreen(const char* message);
 
 ※7.0節の「非ブロッキング設計」は、`delay()`の多用を避け`millis()`ベースの時間管理を用いるという趣旨であり、RTOSタスク等による本格的な非同期処理を指すものではない。
 
-**タイムアウト：**
+**Wi-Fi接続のタイムアウト：**
 
-Wi-Fi接続が完了しない場合に備え、タイムアウト（例：15秒）を設ける。超過した場合はWi-Fi接続失敗画面（5.9参照）へ遷移する。同期処理のままループで実装できる。
+Wi-Fi接続が完了しない場合に備え、タイムアウトを設ける。値は`WIFI_CONNECT_TIMEOUT_MS`（60秒、3.1.2参照）を適用し、超過した場合はWi-Fi接続失敗として扱う。
 
-```cpp
-// Wi-Fi接続をタイムアウト付きで待つ（同期処理）
-bool connectWiFiWithTimeout(unsigned long timeoutMs) {
-    WiFi.begin();
-    unsigned long start = millis();
+**処理結果による遷移先：**
 
-    while (WiFi.status() != WL_CONNECTED) {
-        if (millis() - start > timeoutMs) {
-            return false;   // タイムアウト
-        }
-        delay(100);
-    }
-    return true;
-}
-```
+| 結果 | 遷移先 |
+|---|---|
+| 解析成功（1件以上） | 機体情報表示（FLIGHT_VIEW） |
+| 解析成功（0件） | 機体0件画面（5.10.2参照） |
+| AirLabs APIエラー／HTTP通信エラー／JSONパース失敗 | エラー画面（5.10.1参照） |
+| Wi-Fi接続失敗 | 本来はWi-Fi設定関連画面（5.9参照）だが、下記の暫定措置によりエラー画面へ遷移する |
+
+**Wi-Fi接続失敗時の遷移先（暫定措置）：**
+
+Wi-Fi設定関連画面（5.9参照）は手順25で実装予定のため、現時点では暫定的にエラー画面（5.10.1参照）へ遷移させている。表示内容は自前の文字列（`message : Wi-Fi connection failed` / `code : wifi_failed`）とする。**手順25の実装時に、本来の遷移先へ差し替えること。**
+
+実装は`ui_handler_loading.cpp`（`drawLoadingScreen()`）、`state_machine.cpp`（`handleLoadingView()`）を参照。
 
 ---
 
@@ -2023,13 +2009,14 @@ Your-Project-Folder/
 │   ├── wifi_handler.cpp
 │   ├── web_handler.cpp
 │   ├── api_handler.cpp
-│   ├── ui_handler.cpp            // UI共通ヘルパー（文字列整形、initScreenDrawing()、drawButtonLabels()等）
+│   ├── ui_handler.cpp            // UI共通ヘルパー（文字列整形、initScreenDrawing()、drawButtonLabels()、drawOuterFrame()等）
 │   ├── ui_handler_flight.cpp     // FLIGHT_VIEW（機体情報表示）の描画
 │   ├── ui_handler_menu.cpp       // SETTINGS（設定メニュー）の描画
 │   ├── ui_handler_config.cpp     // CONFIG（設定内容一覧）の描画
 │   ├── ui_handler_confirm.cpp    // 確認ダイアログの描画
 │   ├── ui_handler_scanrange.cpp  // SCAN RANGE選択画面の描画
 │   ├── ui_handler_error.cpp      // エラー画面・機体0件画面の描画（5.10参照）
+│   ├── ui_handler_loading.cpp    // ローディング画面の描画（5.11参照）
 │   ├── storage_handler.cpp
 │   ├── state_machine.cpp
 │   ├── system_status.cpp
@@ -2041,41 +2028,70 @@ Your-Project-Folder/
 ※WiFiManagerを使用せず自前実装とする方針（3.0参照）に伴い、Webサーバー・キャプティブポータル関連の処理量が増えるため、`web_handler`および`storage_handler`を分離する構成とした。
 ※`ui_handler`は、全14画面分の描画コードを1ファイルに集約すると肥大化する懸念から、**ヘッダ（`ui_handler.h`）は1つのまま、`.cpp`のみ画面の種類ごとに分割する**方針を採用した（手順16実装時に決定）。PlatformIOは`src/`配下の`.cpp`をファイル名に関わらず自動でビルド対象にするため、この分割による`main.cpp`側・`platformio.ini`側への影響はない。
 
-### 7.1.1 ソースファイル間の連携（想定図）
+### 7.1.1 ソースファイル間の連携
 
-`src/`配下の各`.cpp`ファイルが、どのファイルの機能を呼び出すかを示した想定図である。**実装が確定した部分（実線）と、まだ未実装で仕様書の記述から見込まれる想定にとどまる部分（破線）を区別している**。各手順の実装完了時に、都度この図を更新すること。
+`src/`配下の各`.cpp`ファイルが、どのファイルの機能を呼び出すかを示した図である。**手順24完了時点の実装内容を反映している**。各手順の実装完了時に、都度この図を更新すること。
 
 ```mermaid
 graph TD
     main[main.cpp]
+    state[state_machine.cpp]
+    input[input_handler.cpp]
+    ui[ui_handler.cpp<br/>＋画面別 ui_handler_*.cpp]
+    api[api_handler.cpp]
     wifi[wifi_handler.cpp]
     web[web_handler.cpp]
     storage[storage_handler.cpp]
     flight[flight_data.cpp]
-    api[api_handler.cpp<br/>※未実装]
-    ui[ui_handler.cpp<br/>※未実装]
-    state[state_machine.cpp<br/>※未実装]
-    dict[airline_dict.cpp<br/>※未実装]
+    error[error_data.cpp]
+    dict[airline_dict.cpp]
+    status[system_status.cpp]
 
-    main -->|initWiFi等を呼び出し| wifi
-    wifi -.->|WebServerインスタンスをextern共有| web
-    web -->|saveWifiCredentials等を呼び出し| storage
+    main -->|状態に応じたハンドラの呼び出し| state
+    main -->|ボタン入力状態の更新| input
+    main -->|初期化・接続| wifi
+    main -->|機種判定・電池残量の更新| status
+
+    state -->|各画面の描画| ui
+    state -->|データ取得・レスポンス解析| api
+    state -->|Wi-Fiの接続・切断| wifi
+    state -->|キャッシュ保存・設定値の読込・消去| storage
+    state -->|ボタン押下の判定| input
+    state -->|取得結果の格納先| flight
+    state -->|エラー内容の受け渡し| error
+
+    api -->|APIキー・基準地点・SCAN RANGEの読込| storage
+    api -->|解析結果を格納| flight
+
+    ui -->|表示データの参照| flight
+    ui -->|航空会社名の変換| dict
+    ui -->|設定値の表示| storage
+    ui -->|電池残量の参照| status
+    ui -->|カーソル位置等の参照| state
+
+    input -->|物理ボタン有無の判定| status
+    input -->|ボタンエリア座標の共有| ui
+
+    wifi -->|WebServerインスタンスをextern共有| web
+    wifi -->|資格情報・静的IP設定の読み書き| storage
+    web -->|入力値の保存| storage
+
     storage -->|FlightData構造体を参照| flight
 
-    main -.->|SystemModeに応じて分岐<br/>（想定）| state
-    state -.->|各モードのハンドラを呼び出し<br/>（想定）| ui
-    state -.->|データ取得タイミングで呼び出し<br/>（想定）| api
-    api -.->|取得結果を格納<br/>（想定）| flight
-    api -.->|キャッシュ・APIキー読込<br/>（想定）| storage
-    ui -.->|表示データ参照<br/>（想定）| flight
-    ui -.->|航空会社名変換<br/>（想定）| dict
+    main -.-> api
+    main -.-> storage
+    main -.-> flight
+    main -.-> error
+    main -.-> ui
 ```
 
 **凡例：**
-* 実線：既に実装・確定済みの呼び出し関係
-* 破線：未実装で、仕様書の記述から見込まれる想定関係。実装時に変わる可能性がある
+* 実線：恒久的な呼び出し関係
+* 破線：`main.cpp`の一時テストコードによる暫定的な呼び出し関係。起動フローの本実装（8.2-D以降）で整理される想定であり、恒久的な依存ではない
 
 **補足：** `wifi_handler.cpp`と`web_handler.cpp`の関係は、通常の`#include`による関数呼び出しではなく、`WebServer server(80)`インスタンスを`wifi_handler.cpp`側で定義し、`wifi_handler.h`に`extern WebServer server;`を宣言することで、`web_handler.cpp`側は`#include "wifi_handler.h"`のみで共有できる形になっている。
+
+**補足：** `ui_handler_*.cpp`（画面別の描画ファイル）は、ヘッダが`ui_handler.h`の1つに統一されているため（7.1参照）、本図では`ui_handler.cpp`とまとめて1つのノードとして扱っている。
 
 ### 7.2 platformio.ini（依存ライブラリ）
 
@@ -2171,7 +2187,7 @@ build_flags =
 21. 確認ダイアログの共通描画関数（`drawConfirmDialog()`）と`ConfirmTarget` enum分岐の実装（5.7.2参照）
 22. SCAN RANGE選択画面の実装（NARROW / WIDE、カーソル=背景色・設定値=文字色、5.7.3参照）
 23. エラー画面（`drawErrorView()`）・機体0件画面の実装（5.10参照） ✅
-24. ローディング画面（`drawLoadingScreen()`）の実装（段階表示、5.11参照）
+24. ローディング画面（`drawLoadingScreen()`）の実装（段階表示、5.11参照） ✅
 25. Wi-Fi設定関連画面（AP接続案内／接続成功／接続失敗）の実装（5.9参照）
 
 **D. 設定ページ（stationモード）**
