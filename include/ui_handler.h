@@ -83,20 +83,51 @@ String maskSecret(const String& text);
 // 共通描画パーツ（複数画面から呼ばれる、画面の一部分を描画）
 // ------------------------------------------------------
 
-// 画面全体の初期化（背景クリア・共通テキスト設定）。各画面のdrawXxxView()の冒頭で呼び出す
+/**
+ * @brief 画面全体の初期化（背景クリア・共通テキスト設定）
+ *
+ * @note 各画面のdrawXxxView()の冒頭で呼び出すこと
+ */
 void initScreenDrawing();
 
-// タイトルを持たない画面共通の外枠を描画する（確認ダイアログ・機体0件画面・ローディング画面等）
+/**
+ * @brief タイトルを持たない画面共通の外枠を描画する（確認ダイアログ・機体0件画面・ローディング画面等）
+ */
 void drawOuterFrame();
 
-// 3つのボタンラベルを描画する（nullptrの位置は描画しない）
+/**
+ * @brief 3つのボタンラベルを描画する
+ *
+ * @param[in] labelA 左ボタンのラベル（nullptrの場合は描画しない）
+ * @param[in] labelB 中央ボタンのラベル（nullptrの場合は描画しない）
+ * @param[in] labelC 右ボタンのラベル（nullptrの場合は描画しない）
+ */
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC);
 
-// 電池残量アイコンを描画する（levelが範囲外の場合は描画しない）
+/**
+ * @brief 電池残量アイコンを描画する
+ *
+ * @note levelが範囲外（0〜100以外）の場合は描画しない
+ *
+ * @param[in] x 描画位置のX座標
+ * @param[in] y 描画位置のY座標
+ * @param[in] level 電池残量（%）
+ */
 void drawBatteryIcon(int x, int y, int level);
 
-// カーソル選択状態を反映した項目を描画する（背景＋テキストの両方を描画）
-// forceBlackOnSelect: 選択時に文字色を黒へ強制するか（RESET ALL等、選択時も文字色を保ちたい項目はfalseを指定）
+/**
+ * @brief カーソル選択状態を反映した項目を描画する（背景＋テキストの両方を描画）
+ *
+ * @param[in] x 描画位置のX座標
+ * @param[in] y 描画位置のY座標
+ * @param[in] width 描画エリアの幅
+ * @param[in] height 描画エリアの高さ
+ * @param[in] text 表示する文字列
+ * @param[in] isSelected 選択中かどうか
+ * @param[in] textColor 通常時の文字色（デフォルト: TFT_WHITE）
+ * @param[in] forceBlackOnSelect 選択時に文字色を黒へ強制するか（デフォルト: true）
+ * RESET ALL等、選択時も文字色を保ちたい項目はfalseを指定する
+ */
 void drawCursorHighlight(int x, int y, int width, int height, const char* text, 
                         bool isSelected, uint16_t textColor = TFT_WHITE, bool forceBlackOnSelect = true);   
 
@@ -104,34 +135,53 @@ void drawCursorHighlight(int x, int y, int width, int height, const char* text,
 // 画面全体描画（1画面＝1関数）
 // ------------------------------------------------------
 
-// 機体情報表示画面（FLIGHT_VIEW）を描画する
+/**
+ * @brief 機体情報表示画面（FLIGHT_VIEW）を描画する
+ */
 void drawFlightView();
 
-// 設定メニュー画面（SETTINGS）を描画する
+/**
+ * @brief 設定メニュー画面（SETTINGS）を描画する
+ */
 void drawSettingsView();
 
-// 設定内容一覧画面（CONFIG）を描画する
+/**
+ * @brief 設定内容一覧画面（CONFIG）を描画する
+ */
 void drawConfigView();
 
-// 確認ダイアログを描画する
-// title    : メインメッセージ（"Change Wi-Fi settings?" 等）
-// message1 : 詳細説明の1行目
-// message2 : 詳細説明の2行目（不要な場合は nullptr）
+/**
+ * @brief 確認ダイアログを描画する
+ *
+ * @param[in] title メインメッセージ（"Change Wi-Fi settings?"等）
+ * @param[in] message1 詳細説明の1行目
+ * @param[in] message2 詳細説明の2行目（不要な場合はnullptr）
+ */
 void drawConfirmDialog(const char* title, const char* message1, const char* message2);
 
-// SCAN RANGE選択画面を描画する
+/**
+ * @brief SCAN RANGE選択画面を描画する
+ */
 void drawScanRangeView();
 
-// エラー画面を描画する
-// message : レスポンスのerror.message（またはHTTP/JSON解析エラー発生時のオリジナルメッセージ）
-// code    : レスポンスのerror.code（同上）
+/**
+ * @brief エラー画面を描画する
+ *
+ * @param[in] message レスポンスのerror.message（またはHTTP/JSON解析エラー発生時のオリジナルメッセージ）
+ * @param[in] code レスポンスのerror.code（同上）
+ */
 void drawErrorView(const char* message, const char* code);
 
-// 機体0件画面を描画する
+/**
+ * @brief 機体0件画面を描画する
+ */
 void drawNoFlightsView();
 
-// ローディング画面を描画する
-// message : 処理段階を示すメッセージ（"Connecting to Wi-Fi..." 等）
+/**
+ * @brief ローディング画面を描画する
+ *
+ * @param[in] message 処理段階を示すメッセージ（"Connecting to Wi-Fi..."等）
+ */
 void drawLoadingScreen(const char* message);
 
 #endif
