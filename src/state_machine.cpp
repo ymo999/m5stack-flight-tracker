@@ -7,11 +7,13 @@
 
 #include <M5Unified.h>
 
+#include "api_handler.h"                    // データ取得中（MODE_LOADING）でのWi-Fi接続後の各種APIリクエスト
 #include "error_data.h"
 #include "flight_data.h"
 #include "input_handler.h"
 #include "storage_handler.h"                // 現在の設定値（APIリクエスト残数など）取得や、設定値消去を行うため
 #include "ui_handler.h"
+#include "wifi_handler.h"                   // データ取得中（MODE_LOADING）でのWi-Fi接続・切断
 
 // 現在の画面状態の実体
 // 起動時の分岐ロジック（Wi-Fi接続・APIキー・基準地点の登録状況による初期状態の判定）は未実装のため、
@@ -321,14 +323,15 @@ void handleConfirmDialog() {
                 /* TODO : Wi-Fi再設定処理（手順25で実装） */
                 break;
             case CONFIRM_REFRESH:
-                /* TODO : データ再取得処理 */
+                // CONFIRM：ローディング画面へ遷移する（実際の取得処理はhandleLoadingView()側で行う）
+                currentMode = MODE_LOADING;
                 break;
             default:
                 break;
         }
         currentConfirm = CONFIRM_NONE;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -458,8 +461,86 @@ void handleNoFlightsView() {
 }
 
 // データ取得中
+// 1回の呼び出し内でWi-Fi接続〜APIリクエスト〜解析まで完結させる
+//（操作可能なボタンは配置しておらず処理中に入力を受け付ける必要はない）
 void handleLoadingView() {
-    /* TODO : 処理内容の記述（ローディング画面の描画、5.2・5.11参照） */
+    
+    // ------------------------------------------------------
+    // 1. Wi-Fi接続
+    // ------------------------------------------------------
+    drawLoadingScreen("Connecting to Wi-Fi...");
+    enableWiFi();
+
+    if (!tryConnectWiFi()) {
+        // Wi-Fi接続失敗：CONNECTION_FAILED_VIEW（Wi-Fi再接続フロー）は未実装のため、暫定的にERROR_VIEWへ倒す
+        disableWiFi();
+        currentError.message = "Wi-Fi connection failed";
+        currentError.code = "wifi_failed";
+        currentMode = MODE_ERROR_VIEW;
+        needsRedraw = true;
+        Serial.println("[LOADING] Wi-Fi connection failed");
+        return;
+    }
+
+    // 接続成功時、現在日時を同期する（失敗してもlastUpdateTimeは前回値を保持したまま処理を続行）
+    struct tm timeInfo;
+    if (syncTime(timeInfo)) {
+        lastUpdateTime = formatUpdateTime(timeInfo);
+    }
+        
+    Serial.print("[LOADING] Wi-Fi connected(");
+    Serial.print(WiFi.localIP().toString());
+    Serial.println(")");
+
+    // ------------------------------------------------------
+    // 2. APIリクエスト
+    // ------------------------------------------------------
+    drawLoadingScreen("Fetching flight data...");
+    String rawJson;
+
+    // HTTP通信エラー時の処理
+    if (!fetchFlightsRaw(rawJson)) {
+        disableWiFi();
+        currentError.message = "HTTP request failed";
+        currentError.code = "http_error";
+        currentMode = MODE_ERROR_VIEW;
+        needsRedraw = true;
+        Serial.println("[LOADING] fetchFlightsRaw() failed");
+        return;
+    }
+
+    Serial.println("[LOADING] fetchFlightsRaw() done");
+
+    // ------------------------------------------------------
+    // 3. レスポンス解析
+    // ------------------------------------------------------
+    drawLoadingScreen("Processing...");
+    int remainingRequests = 0;
+    ErrorData parseError;
+    bool parseOk = parseFlightsResponse(rawJson, foundFlights, totalFlightCount, remainingRequests, parseError);
+
+    disableWiFi();                          // 通信不要な処理（キャッシュ保存・画面遷移）の前に切断し、低消費電力運用に戻す
+
+    // JSON解析失敗時の処理
+    if (!parseOk) {
+        currentError = parseError;
+        currentMode = MODE_ERROR_VIEW;
+        needsRedraw = true;
+        Serial.println("[LOADING] parseFlightsResponse() failed");
+        return;
+    }
+
+    Serial.printf("[LOADING] Fetch+Parse flights: %d, remainingRequests: %d\n", totalFlightCount, remainingRequests);
+
+    // ------------------------------------------------------
+    // 4. キャッシュ保存・画面遷移（0件はエラーではないためNO_FLIGHTS_VIEWへ）
+    // ------------------------------------------------------
+    saveCache(foundFlights, totalFlightCount, remainingRequests);
+    currentDisplayIndex = 0;                // 1機目から表示する
+
+    currentMode = (totalFlightCount > 0) ? MODE_FLIGHT_VIEW : MODE_NO_FLIGHTS_VIEW;
+    needsRedraw = true;
+    Serial.printf("[LOADING] done. flights = %d, remainingRequests = %d\n", totalFlightCount, remainingRequests);
 }
 
 // ============================================================

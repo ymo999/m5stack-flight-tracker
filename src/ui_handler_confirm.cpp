@@ -16,7 +16,7 @@ void drawConfirmDialog(const char* title, const char* message1, const char* mess
     // ------------------------------------------------------
     // 外枠
     // ------------------------------------------------------
-    M5.Lcd.drawRect(5, 6, 310, 228, TFT_WHITE);
+    drawOuterFrame();
 
     // ------------------------------------------------------
     // 見出し

@@ -11,10 +11,6 @@
                                             //  ※M5Unified.h自体に多重インクルード防止機構があるため、
                                             //  　各.cpp側で個別にincludeしても問題は生じない
 
-// // SETTINGS画面の項目数（複数ファイルから参照されるため定義）
-// #define SETTINGS_REGULAR_ITEM_COUNT 5       // RESET ALLを除いた通常項目数（settingsItems[]の要素数と一致）
-// #define SETTINGS_TOTAL_ITEM_COUNT 6         // RESET ALLを含めた総項目数（cursorIndexの範囲判定に使用）
-
 // SCAN RANGE画面の項目数（複数ファイルから参照されるため定義）
 #define SCAN_RANGE_ITEM_COUNT 2             // NARROW・WIDEの2項目（scanRangeItems[]の要素数と一致）
 
@@ -56,6 +52,9 @@ String maskSecret(const String& text);
 // 画面全体の初期化（背景クリア・共通テキスト設定）。各画面のdrawXxxView()の冒頭で呼び出す
 void initScreenDrawing();
 
+// タイトルを持たない画面共通の外枠を描画する（確認ダイアログ・機体0件画面・ローディング画面等）
+void drawOuterFrame();
+
 // 3つのボタンラベルを描画する（nullptrの位置は描画しない）
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC);
 
@@ -80,7 +79,7 @@ void drawSettingsView();
 // 設定内容一覧画面（CONFIG）を描画する
 void drawConfigView();
 
-// 確認ダイアログの共通描画関数
+// 確認ダイアログを描画する
 // title    : メインメッセージ（"Change Wi-Fi settings?" 等）
 // message1 : 詳細説明の1行目
 // message2 : 詳細説明の2行目（不要な場合は nullptr）
@@ -90,11 +89,15 @@ void drawConfirmDialog(const char* title, const char* message1, const char* mess
 void drawScanRangeView();
 
 // エラー画面を描画する
-// message : レスポンスのerror.message（またはHTTP/パースエラー時の自前文字列）
+// message : レスポンスのerror.message（またはHTTP/JSON解析エラー発生時のオリジナルメッセージ）
 // code    : レスポンスのerror.code（同上）
 void drawErrorView(const char* message, const char* code);
 
 // 機体0件画面を描画する
 void drawNoFlightsView();
+
+// ローディング画面を描画する
+// message : 処理段階を示すメッセージ（"Connecting to Wi-Fi..." 等）
+void drawLoadingScreen(const char* message);
 
 #endif
