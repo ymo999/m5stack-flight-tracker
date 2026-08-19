@@ -61,6 +61,13 @@ void setup() {
     initStorage();
     Serial.println("[BOOT] initStorage() done");
     initWiFi();
+
+    // // Wi-Fi接続失敗検証用 ※後で必ず戻すこと ↓ ここから
+    // String currentSsid;
+    // loadWifiSsid(currentSsid);
+    // saveWifiCredentials(currentSsid, "wrong_password_for_test");
+    // // ↑ ここまで
+
     Serial.println("[BOOT] initWiFi() done");
     initStateMachine();
     Serial.println("[BOOT] initStateMachine() done");
@@ -90,7 +97,7 @@ void setup() {
     // config.lat = 0;                              // ヌル島の緯度（機体0件テスト用）
     // config.lng = 0;                              // ヌル島の経度（機体0件テスト用）
     saveConfig(config);
-    Serial.println("[STORAGE] Base Point saved.");
+    Serial.println("[STORAGE] Base Point saved");
     
     updateBatteryLevel();
     Serial.println("[BOOT] updateBatteryLevel() done");
@@ -103,11 +110,20 @@ void setup() {
     // ここから計測（JSONパース）
     unsigned long startTime = millis();
     String rawJson;
+    int remainingRequests = 0;              // 一時テストコード
+    ErrorData parseError;                   // 一時テストコード
     if (fetchFlightsRaw(rawJson)) {
-        parseFlightsResponse(rawJson, foundFlights, totalFlightCount);
+        Serial.println("[BOOT] fetchFlightsRaw() done");
+        if (parseFlightsResponse(rawJson, foundFlights, totalFlightCount, remainingRequests, parseError))
+        {
+            unsigned long elapsed = millis() - startTime;
+            Serial.printf("[BOOT] Fetch+Parse time: %lu ms, flights: %d, remainingRequests: %d\n", elapsed, totalFlightCount, remainingRequests);
+        } else {
+            Serial.println("[BOOT] parseFlightsResponse() failed");
+        }
+    } else {
+        Serial.println("[BOOT] fetchFlightsRaw() failed");
     }
-    unsigned long elapsed = millis() - startTime;
-    Serial.printf("[DATA] Fetch+Parse time: %lu ms, flights: %d\n", elapsed, totalFlightCount);
     // ここまで計測（JSONパース）
 
     // 画面遷移テスト用
