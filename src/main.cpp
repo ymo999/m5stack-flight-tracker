@@ -59,18 +59,18 @@ void setup() {
     // ===== 調査用一時コード（ここまで） =====
     
     initStorage();
-    // Serial.println("[BOOT] initStorage() done");
+    Serial.println("[BOOT] initStorage() done");
     initWiFi();
-    // Serial.println("[BOOT] initWiFi() done");
+    Serial.println("[BOOT] initWiFi() done");
     initStateMachine();
-    // Serial.println("[BOOT] initStateMachine() done");
-    // Serial.println("[BOOT] setup() complete");
+    Serial.println("[BOOT] initStateMachine() done");
+    Serial.println("[BOOT] setup() complete");
     
     if (isWiFiConnected()) {
         
-        // Serial.print("[BOOT] Wi-Fi connected(");
-        // Serial.print(WiFi.localIP().toString());
-        // Serial.println(")");
+        Serial.print("[BOOT] Wi-Fi connected(");
+        Serial.print(WiFi.localIP().toString());
+        Serial.println(")");
 
     }
 
@@ -93,7 +93,7 @@ void setup() {
     Serial.println("[STORAGE] Base Point saved.");
     
     updateBatteryLevel();
-    Serial.println("[BOOT] updateBatteryLevel() done");     // 一時テストコード：電池アイコン見た目確認用
+    Serial.println("[BOOT] updateBatteryLevel() done");
 
     struct tm timeInfo;
     if (syncTime(timeInfo)) {

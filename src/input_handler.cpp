@@ -7,7 +7,7 @@
 
 #include "input_handler.h"
 
-#include <M5Unified.h>
+// M5Unified.hはui_handler.hの中でインクルード済
 
 #include "system_status.h"                  // 物理ボタン有無判定
 #include "ui_handler.h"                     // BUTTON_AREA_*定数（描画側と共通化）
