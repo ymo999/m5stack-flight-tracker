@@ -1,6 +1,6 @@
 /**
- * api_handler.h
- * API通信関連の関数宣言
+ * @file api_handler.h
+ * @brief API通信関連の関数宣言
  */
 
 #ifndef API_HANDLER_H                   // インクルードガード（二重定義防止）
@@ -8,26 +8,48 @@
 
 #include <Arduino.h>
 
+#include "error_data.h"                 // ErrorData（AirLabs APIエラー・JSON解析失敗時の出力用）
 #include "flight_data.h"
 
-// AirLabs APIへ周辺機体情報のリクエストを送信し、生のJSONレスポンスを取得する
-// Bounding Box（緯度経度範囲）は、保存済みの取得地点・SCAN RANGE（storage_handler経由）から内部で計算する
-// 戻り値: true = リクエスト成功（HTTPステータス200）、false = 失敗
+/**
+ * AirLabs APIへ周辺機体情報のリクエストを送信し、生のJSONレスポンスを取得する
+ * @brief Bounding Box（緯度経度範囲）は、保存済みの取得地点・SCAN RANGE（storage_handler経由）から内部で計算する
+ * @param responsePayload AirLabsから返ってきた生のJSON文字列（HTTPレスポンスボディそのもの）
+ * @return true リクエスト成功（HTTPステータス200）
+ * @return false 失敗
+ */
 bool fetchFlightsRaw(String& responsePayload);
 
-// AirLabs APIの生JSONレスポンスをパースし、FlightData配列に格納する
-// 基準地点からの距離順（近い順）に、最大MAX_FLIGHT_COUNT件を保持する（超過分は遠い機体から捨てる）
-// 距離計算に必要な基準地点（lat/lng）は、内部でstorage_handler経由で読み込む
-void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flightCount);
+/**
+ * AirLabs APIの生JSONレスポンスをパースし、FlightData配列に格納する
+ * @brief 基準地点からの距離順（近い順）に、最大MAX_FLIGHT_COUNT件を保持する（超過分は遠い機体から捨てる）
+ * 距離計算に必要な基準地点（lat/lng）は、内部でstorage_handler経由で読み込む
+ * @param remainingRequests レスポンスのrequest.key.limits_totalから取得した、APIキーの残りリクエスト数
+ * @param errorOut 失敗時（JSON解析失敗、またはAirLabs APIエラー）にmessage/codeをセットする
+ * @return true 成功（取得件数0件の場合を含む）
+ * @return false 失敗（errorOut参照）
+ */
+bool parseFlightsResponse(const String& rawJson, FlightData flights[], int& flightCount, int& remainingRequests, ErrorData& errorOut);
 
-// NTPで日本標準時に同期する
-// 呼び出し時点でWi-Fi接続済みであることが前提
-// 戻り値: true = 同期成功（timeInfoに結果を格納）、false = 同期失敗
+/**
+ * NTPで日本標準時に同期する
+ * @brief 呼び出し時点でWi-Fi接続済みであることが前提
+ * @param timeInfo NTP同期が成功した場合の、同期結果の日時情報
+ * @return true 同期成功（timeInfoに結果を格納）
+ * @return false 同期失敗
+ */
 bool syncTime(struct tm& timeInfo);
 
-// 2点間の地表距離を計算する（単位：メートル、Haversine公式）
-// TinyGPSPlusライブラリが提供する同名の静的関数を、この1関数のためだけに
-// ライブラリ全体を依存させることを避けるため、自前実装に置き換えたもの
+/**
+ * 2点間の地表距離を計算する（単位：メートル、Haversine公式）
+ * @brief TinyGPSPlusライブラリが提供する同名の静的関数を、この1関数のためだけにライブラリ全体を依存させることを避けるため、自前実装に置き換えたもの
+ * ※度→ラジアン変換は、Arduino.hでマクロ定義されているradians(deg)を使用
+ * @param lat1 地点1の緯度
+ * @param lng1 地点1の経度
+ * @param lat2 地点2の緯度
+ * @param lng2 地点2の経度
+ * @return 2点間の地表距離(単位:メートル)
+ */
 double calculateDistanceMeters(double lat1, double lng1, double lat2, double lng2);
 
 #endif

@@ -16,7 +16,7 @@
 // AirLabs APIのベースURL
 static const char* API_BASE_URL = "https://airlabs.co/api/v9/flights";
 
-// SCAN RANGEに対応するマージン（度）。2.1参照
+// SCAN RANGEに対応するマージン（度）
 static const double MARGIN_NARROW = 0.5;
 static const double MARGIN_WIDE   = 2.0;
 
@@ -72,8 +72,8 @@ bool fetchFlightsRaw(String& responsePayload) {
     if (success) {
         responsePayload = http.getString();
     } else {
-        // Serial.print("AirLabs API request failed, HTTP code: ");
-        // Serial.println(httpCode);
+        Serial.print("[API] AirLabs API request failed, HTTP code: ");
+        Serial.println(httpCode);
     }
 
     http.end();
@@ -116,8 +116,10 @@ static void insertFlightByDistance(FlightData flights[], int& flightCount, const
 // ============================================================
 // AirLabs APIの生JSONレスポンスをパースし、FlightData配列に格納する
 // ============================================================
-void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flightCount) {
+bool parseFlightsResponse(const String& rawJson, FlightData flights[], int& flightCount,
+                          int& remainingRequests, ErrorData& errorOut) {
     flightCount = 0;
+    remainingRequests = 0;
 
     // ------------------------------------------------------
     // 1. 距離計算に使う基準地点を読み込む
@@ -126,23 +128,45 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
     loadConfig(config);
 
     // ------------------------------------------------------
-    // 2. JSON文字列をパースする
+    // 2. JSON文字列をパースする（パースエラーのメッセージはオリジナル）
     // ------------------------------------------------------
     JsonDocument doc;
     DeserializationError error = deserializeJson(doc, rawJson);
     if (error) {
-        // Serial.println("Failed to parse flights response");
-        return;
-    }
-
-    JsonArray responseArray = doc["response"].as<JsonArray>();
-    if (responseArray.isNull()) {
-        // Serial.println("Flights response has no 'response' array");
-        return;
+        Serial.println("[JSON] Failed to parse flights response");
+        errorOut.message = "JSON parse failed";
+        errorOut.code = "parse_error";
+        return false;
     }
 
     // ------------------------------------------------------
-    // 3. 各機体を1件ずつ処理し、距離順で上位MAX_FLIGHT_COUNT件を保持する
+    // 3. AirLabs APIレベルのエラーを検出する
+    //    例：{"error":{"message":"Missing api_key","code":"wrong_params"}}
+    //    レスポンスのerror.message/error.codeをそのまま表示する方針のため、加工せず転記する
+    // ------------------------------------------------------
+    if (doc["error"].is<JsonObject>()) {
+        errorOut.message = (const char*)(doc["error"]["message"] | "Unknown error");
+        errorOut.code = (const char*)(doc["error"]["code"] | "unknown_error");
+        return false;
+    }
+
+    // ------------------------------------------------------
+    // 4. 残りリクエスト数を取得する（request.key.limits_total）
+    //    キーが存在しない想定外レスポンスの場合は0のまま処理を継続する
+    // ------------------------------------------------------
+    remainingRequests = doc["request"]["key"]["limits_total"] | 0;
+
+    // ------------------------------------------------------
+    // 5. 機体情報配列を取得する（存在しない想定外形式は、エラーではなく0件として扱う）
+    // ------------------------------------------------------
+    JsonArray responseArray = doc["response"].as<JsonArray>();
+    if (responseArray.isNull()) {
+        Serial.println("[JSON] Flights response has no 'response' array");
+        return true;
+    }
+
+    // ------------------------------------------------------
+    // 6. 各機体を1件ずつ処理し、距離順で上位MAX_FLIGHT_COUNT件を保持する
     // ------------------------------------------------------
     for (JsonObject flight : responseArray) {
         FlightData data;
@@ -159,7 +183,7 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
         data.to           = (const char*)(flight["arr_iata"] | "");
         data.squawk       = (const char*)(flight["squawk"] | "");
 
-        // 欠損値センチネル（-1）。2.3節・flight_data.h参照
+        // 欠損値センチネル（-1）※「0」が意味を持つ項目のため欠損を「-1」で表す
         data.alt     = flight["alt"] | -1;
         data.speed   = flight["speed"] | -1;
         data.heading = flight["dir"] | -1;
@@ -174,6 +198,8 @@ void parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
 
         insertFlightByDistance(flights, flightCount, data);
     }
+
+    return true;
 }
 
 // ============================================================
