@@ -23,7 +23,8 @@ enum SystemMode {
     MODE_CONFIRM_DIALOG,                    ///< 確認ダイアログ
     MODE_ERROR_VIEW,                        ///< エラー表示
     MODE_NO_FLIGHTS_VIEW,                   ///< 機体0件
-    MODE_LOADING                            ///< データ取得中
+    MODE_LOADING,                           ///< データ取得中
+    MODE_CONNECTION_FAILED                  ///< Wi-Fi接続失敗
 };
 
 /**
@@ -63,7 +64,6 @@ void updateStateMachine();
 // 各画面での処理を行うための関数
 // ------------------------------------------------------
 
-
 /**
  * @name 各画面状態（SystemMode）に対応する処理を行うための関数
  * 
@@ -82,29 +82,43 @@ void handleNoFlightsView();                 // 機体0件
 void handleLoadingView();                   // データ取得中
 
 // ------------------------------------------------------
-// 確認ダイアログ専用（MODE_CONFIRM_DIALOG）
+// Wi-Fi設定画面専用（MODE_WIFI_SETUP）
 // ------------------------------------------------------
-
+ 
 /**
- * @brief 確認ダイアログの種別
- * 
- * 「同一の描画内容でも、遷移元によってCANCEL/CONFIRM後の遷移先が異なる」ケースに対応するため、
- * 遷移元ごとに個別の値を用意する（汎用的な「直前の画面」変数は使わない方針）
+ * @brief Wi-Fi設定関連画面の表示フェーズ
  */
-enum ConfirmTarget {
-    CONFIRM_NONE,                           ///< ダイアログ非表示中
-    CONFIRM_RESET,                          ///< SETTINGSからのRESET ALL確認
-    CONFIRM_WIFI_SETTINGS,                  ///< SETTINGSからのWi-Fi再設定確認
-    CONFIRM_WIFI_RECONNECT,                 ///< 機体再取得時の接続失敗からのWi-Fi再接続確認
-    CONFIRM_REFRESH                         ///< FLIGHT_VIEW最終機体からのデータ再取得確認
+enum WiFiSetupPhase {
+    WIFI_PHASE_NONE,        ///< MODE_WIFI_SETUP以外の状態では意味を持たない
+    WIFI_PHASE_GUIDE,       ///< AP接続案内（APモード起動中）
+    WIFI_PHASE_FAILED       ///< 接続失敗
 };
 
 /**
- * @brief state_machine.cpp で定義されている、現在表示中の確認ダイアログの種別を共有する
+ * @brief AP接続案内画面の遷移元（BACKの有無・遷移先の決定に使用）
  * 
- * @note この変数はMODE_CONFIRM_DIALOG以外の状態では意味を持たない（CONFIRM_NONEを想定）
+ * ConfirmTarget・MenuCallerの考え方を踏襲する
  */
-extern ConfirmTarget currentConfirm;
+enum WiFiSetupCaller {
+    WIFI_CALLER_NONE,       ///< MODE_WIFI_SETUP以外の状態では意味を持たない
+    WIFI_CALLER_INIT,       ///< 初回起動 → BACKなし
+    WIFI_CALLER_SETTINGS,   ///< SETTINGSから → BACK: MENU_VIEW
+    WIFI_CALLER_RECONNECT   ///< 再接続フローから → BACK: FLIGHT_VIEW
+};
+
+/**
+ * @brief state_machine.cpp で定義されている、Wi-Fi設定関連画面の表示フェーズを共有する
+ * 
+ * @note MODE_WIFI_SETUP以外の状態では意味を持たない（WIFI_PHASE_NONEを想定）
+ */
+extern WiFiSetupPhase wifiSetupPhase;
+
+/**
+ * @brief state_machine.cpp で定義されている、AP接続案内画面の遷移元を共有する
+ * 
+ * @note MODE_WIFI_SETUP以外の状態では意味を持たない（WIFI_CALLER_NONEを想定）
+ */
+extern WiFiSetupCaller wifiSetupCaller;
 
 // ------------------------------------------------------
 // SETTINGS画面専用（MODE_MENU_VIEW）
@@ -171,5 +185,30 @@ extern MenuCaller menuCaller;
  * @brief SCAN RANGE画面専用のカーソル位置（cursorIndexと区別するため個別で定義）
  */
 extern int scanRangeCursorIndex;
+
+// ------------------------------------------------------
+// 確認ダイアログ専用（MODE_CONFIRM_DIALOG）
+// ------------------------------------------------------
+
+/**
+ * @brief 確認ダイアログの種別
+ * 
+ * 「同一の描画内容でも、遷移元によってCANCEL/CONFIRM後の遷移先が異なる」ケースに対応するため、
+ * 遷移元ごとに個別の値を用意する（汎用的な「直前の画面」変数は使わない方針）
+ */
+enum ConfirmTarget {
+    CONFIRM_NONE,                           ///< ダイアログ非表示中
+    CONFIRM_RESET,                          ///< SETTINGSからのRESET ALL確認
+    CONFIRM_WIFI_SETTINGS,                  ///< SETTINGSからのWi-Fi再設定確認
+    CONFIRM_WIFI_RECONNECT,                 ///< 機体再取得時の接続失敗からのWi-Fi再接続確認
+    CONFIRM_REFRESH                         ///< FLIGHT_VIEW最終機体からのデータ再取得確認
+};
+
+/**
+ * @brief state_machine.cpp で定義されている、現在表示中の確認ダイアログの種別を共有する
+ * 
+ * @note この変数はMODE_CONFIRM_DIALOG以外の状態では意味を持たない（CONFIRM_NONEを想定）
+ */
+extern ConfirmTarget currentConfirm;
 
 #endif
