@@ -5,7 +5,7 @@
  * CoreS3等、物理ボタンを持たない機種でのタッチ操作対応を担う
  */
 
-#ifndef INPUT_HANDLER_H                   // インクルードガード（二重定義防止）
+#ifndef INPUT_HANDLER_H                 // インクルードガード（二重定義防止）
 #define INPUT_HANDLER_H
 
 /**
@@ -15,31 +15,14 @@
  */
 void updateTouchButtons();
 
-/**
- * @brief ボタンAが「押された瞬間」かどうかを返す（物理ボタン・仮想ボタン両対応）
- * 
- * @note state_machine.cpp等はM5.BtnA.wasPressed()の代わりにこれらを呼び出すこと
- * @return true 押された瞬間である
- * @return false それ以外
- */
-bool btnAWasPressed();
 
 /**
- * @brief ボタンBが「押された瞬間」かどうかを返す（物理ボタン・仮想ボタン両対応）
+ * @brief 各ボタンが「押された瞬間」かどうかを返す（物理・仮想ボタン両対応）
  * 
- * @note state_machine.cpp等はM5.BtnA.wasPressed()の代わりにこれらを呼び出すこと
- * @return true 押された瞬間である
- * @return false それ以外
+ * @note state_machine.cpp等は M5.BtnX.wasPressed() の代わりにこれらを呼び出すこと
  */
-bool btnBWasPressed();
-
-/**
- * @brief ボタンCが「押された瞬間」かどうかを返す（物理ボタン・仮想ボタン両対応）
- * 
- * @note state_machine.cpp等はM5.BtnA.wasPressed()の代わりにこれらを呼び出すこと
- * @return true 押された瞬間である
- * @return false それ以外
- */
-bool btnCWasPressed();
+bool btnAWasPressed();                  // ボタンAが押されたかどうか
+bool btnBWasPressed();                  // ボタンBが押されたかどうか
+bool btnCWasPressed();                  // ボタンCが押されたかどうか
 
 #endif

@@ -16,7 +16,7 @@
  * 
  * Bounding Box（緯度経度範囲）は、保存済みの取得地点・SCAN RANGE（storage_handler経由）から内部で計算する
  * 
- * @param[out] responsePayload （成功時のみ）AirLabsから返ってきた生のJSON文字列（HTTPレスポンスボディそのもの）
+ * @param[out] responsePayload （成功時のみ）AirLabsから返ってきた生のJSON文字列（HTTPレスポンスボディそのもの）格納先
  * @return true リクエスト成功（HTTPステータス200）
  * @return false 失敗
  */
@@ -30,9 +30,9 @@ bool fetchFlightsRaw(String& responsePayload);
  * 
  * @param[in] rawJson AirLabs APIから取得した生のJSONレスポンス
  * @param[out] flights 機体データの格納先配列（距離の昇順ソート済）
- * @param[out] flightCount 配列に格納された機体数
- * @param[out] remainingRequests レスポンスのrequest.key.limits_totalから取得した、APIキーの残りリクエスト数
- * @param[out] errorOut 失敗時（JSON解析失敗、またはAirLabs APIエラー）にmessage/codeをセットする
+ * @param[out] flightCount 配列に格納された機体数格納先
+ * @param[out] remainingRequests レスポンスのrequest.key.limits_totalから取得した、APIキーの残りリクエスト数格納先
+ * @param[out] errorOut 失敗時（JSON解析失敗、またはAirLabs APIエラー）のmessage/code格納先
  * @return true 成功（取得件数0件の場合を含む）
  * @return false 失敗（errorOut参照）
  */
@@ -43,7 +43,7 @@ bool parseFlightsResponse(const String& rawJson, FlightData flights[], int& flig
  * 
  * 呼び出し時点でWi-Fi接続済みであることが前提
  * 
- * @param[out] timeInfo NTP同期が成功した場合の、同期結果の日時情報
+ * @param[out] timeInfo NTP同期が成功した場合の、同期結果の日時情報格納先
  * @return true 同期成功（timeInfoに結果を格納）
  * @return false 同期失敗
  */
