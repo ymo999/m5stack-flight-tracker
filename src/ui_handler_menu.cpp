@@ -8,8 +8,6 @@
 #include "state_machine.h"
 
 // SETTINGS画面のレイアウト用マクロ
-#define SETTINGS_FRAME_Y 34
-#define SETTINGS_FRAME_HEIGHT 200
 #define SETTINGS_ITEM_START_Y 41
 #define SETTINGS_ITEM_LINE_HEIGHT 19
 #define SETTINGS_SEPARATOR_Y 136
@@ -47,7 +45,7 @@ void drawSettingsView() {
     // ------------------------------------------------------
     // 外枠
     // ------------------------------------------------------
-    M5.Lcd.drawRect(5, SETTINGS_FRAME_Y, 310, SETTINGS_FRAME_HEIGHT, TFT_WHITE);
+    drawOuterFrameWithTitle();
 
     // ------------------------------------------------------
     // 項目

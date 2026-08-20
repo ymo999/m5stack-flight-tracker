@@ -9,8 +9,6 @@
 #include "storage_handler.h"                    // loadConfig()で現在の設定値を取得するため
 
 // SCAN RANGE画面のレイアウト用マクロ
-#define SCAN_RANGE_FRAME_Y 34
-#define SCAN_RANGE_FRAME_HEIGHT 200
 #define SCAN_RANGE_ITEM_START_Y 41
 #define SCAN_RANGE_ITEM_LINE_HEIGHT 19
 
@@ -35,7 +33,7 @@ void drawScanRangeView() {
     // ------------------------------------------------------
     // 外枠
     // ------------------------------------------------------
-    M5.Lcd.drawRect(5, SCAN_RANGE_FRAME_Y, 310, SCAN_RANGE_FRAME_HEIGHT, TFT_WHITE);
+    drawOuterFrameWithTitle();
 
     // ------------------------------------------------------
     // 現在の設定値を取得（黄色文字で強調表示するため）
