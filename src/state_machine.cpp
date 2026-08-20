@@ -50,9 +50,23 @@ void executeResetAll();                     // RESET ALL実行処理のため、
 // 状態管理機構の初期化
 // ============================================================
 void initStateMachine() {
-    currentMode = MODE_WIFI_SETUP;
+    if (isApModeActive()) {
+        // 資格情報なし：initWiFi()内で既にアクセスポイント起動済→登録案内画面表示
+        currentMode = MODE_WIFI_SETUP;
+        wifiSetupPhase = WIFI_PHASE_GUIDE;
+        wifiSetupCaller = WIFI_CALLER_INIT;
+    } else if (isWiFiConnected()) {
+        // 資格情報あり・接続成功：currentModeはここでは変更しない
+        // TODO : APIキー・基準地点の登録状況による分岐実装
+        // （実装までは呼び出し元のmain.cppの一時テストコードでcurrentModeを設定）
+    } else {
+        // 資格情報はあるが接続失敗
+        currentMode = MODE_WIFI_SETUP;
+        wifiSetupPhase = WIFI_PHASE_FAILED;
+    }
+    
     needsRedraw = true;
-    // Serial.printf("[INIT] initStateMachine() done. currentMode = %d\n", currentMode);
+    Serial.printf("[INIT] initStateMachine() done. currentMode = %d\n", currentMode);
 }
 
 // ============================================================
@@ -60,16 +74,17 @@ void initStateMachine() {
 // ============================================================
 void updateStateMachine() {
     switch (currentMode) {
-        case MODE_WIFI_SETUP:      handleWiFiSetupView();  break;
-        case MODE_FLIGHT_VIEW:     handleFlightView();     break;
-        case MODE_MENU_VIEW:       handleMenuView();       break;
-        case MODE_CONFIG_VIEW:     handleConfigView();     break;
-        case MODE_SCAN_RANGE_VIEW: handleScanRangeView();  break;
-        case MODE_QR_VIEW:         handleQrView();         break;
-        case MODE_CONFIRM_DIALOG:  handleConfirmDialog();  break;
-        case MODE_ERROR_VIEW:      handleErrorView();      break;
-        case MODE_NO_FLIGHTS_VIEW: handleNoFlightsView();  break;
-        case MODE_LOADING:         handleLoadingView();    break;
+        case MODE_WIFI_SETUP:           handleWiFiSetupView();  break;
+        case MODE_FLIGHT_VIEW:          handleFlightView();     break;
+        case MODE_MENU_VIEW:            handleMenuView();       break;
+        case MODE_CONFIG_VIEW:          handleConfigView();     break;
+        case MODE_SCAN_RANGE_VIEW:      handleScanRangeView();  break;
+        case MODE_QR_VIEW:              handleQrView();         break;
+        case MODE_CONFIRM_DIALOG:       handleConfirmDialog();  break;
+        case MODE_ERROR_VIEW:           handleErrorView();      break;
+        case MODE_NO_FLIGHTS_VIEW:      handleNoFlightsView();  break;
+        case MODE_LOADING:              handleLoadingView();    break;
+        case MODE_CONNECTION_FAILED:    handleConnectionFailedView(); break;
     }
 }
 
@@ -78,9 +93,70 @@ void updateStateMachine() {
 // 画面の描画・ボタン処理の分岐を担当する
 // ============================================================
 
-// Wi-Fi設定関連（AP接続案内／接続成功／接続失敗）
+// Wi-Fi設定関連（AP接続案内／接続失敗）
 void handleWiFiSetupView() {
-    /* TODO : 処理内容の記述（Wi-Fi設定関連画面の描画・ボタン処理、5.2・5.9参照） */
+
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // 同じボタンでも表示フェーズによって意味が変わるため、まずフェーズで分岐する
+    // ------------------------------------------------------
+    if (wifiSetupPhase == WIFI_PHASE_GUIDE) {
+
+        // BACK：設定を中断して遷移元へ戻る
+        // 初回起動時は戻り先がなくラベルも非表示のため、誤操作をスルーさせる
+        if (btnAWasPressed() && wifiSetupCaller != WIFI_CALLER_INIT) {
+            exitAPMode();                       // 中断するためAPモード・Webサーバーを終了する
+
+            // cursorIndexは意図的にリセットしない（SETTINGSへ戻った際に、Wi-Fi項目を選択していた位置を維持するため）
+            currentMode = (wifiSetupCaller == WIFI_CALLER_SETTINGS) ? MODE_MENU_VIEW : MODE_FLIGHT_VIEW;
+            wifiSetupPhase = WIFI_PHASE_NONE;
+            wifiSetupCaller = WIFI_CALLER_NONE;
+            needsRedraw = true;
+            Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+            return;
+        }
+
+    } else if (wifiSetupPhase == WIFI_PHASE_FAILED) {
+
+        if (btnAWasPressed()) {
+            // BACK：キャッシュがあれば機体情報表示へ戻り、なければ設定をやり直す
+            if (totalFlightCount > 0) {
+                currentMode = MODE_FLIGHT_VIEW;
+                wifiSetupPhase = WIFI_PHASE_NONE;
+            } else {
+                // 資格情報は消さずにAPモードへ入り直す（一時的な接続失敗の可能性があるため）
+                enterAPMode();
+                wifiSetupPhase = WIFI_PHASE_GUIDE;
+                wifiSetupCaller = WIFI_CALLER_INIT;
+            }
+            needsRedraw = true;
+            Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+            return;
+        }
+
+        if (btnCWasPressed() && totalFlightCount > 0) {
+            // Wi-Fi：設定をやり直す。戻り先の機体情報表示が存在するためRECONNECT扱いとする
+            // （再起動で失われた遷移元の文脈を、キャッシュの有無から補う）
+            enterAPMode();
+            wifiSetupPhase = WIFI_PHASE_GUIDE;
+            wifiSetupCaller = WIFI_CALLER_RECONNECT;
+            needsRedraw = true;
+            Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+            return;
+        }
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        if (wifiSetupPhase == WIFI_PHASE_GUIDE) {
+            drawWiFiSetupGuide();
+        } else {
+            drawWiFiSetupFailed();
+        }
+        needsRedraw = false;
+    }
 }
 
 // 機体情報表示
@@ -291,6 +367,9 @@ void handleQrView() {
 
 // 確認ダイアログ
 void handleConfirmDialog() {
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // ------------------------------------------------------
     if (btnAWasPressed()) {
         // CANCEL：currentConfirmに応じて戻り先を分岐
         switch (currentConfirm) {
@@ -318,14 +397,29 @@ void handleConfirmDialog() {
             case CONFIRM_RESET:
                 executeResetAll();                      // 内部でESP.restart()するため以降は戻らない
                 break;
+
             case CONFIRM_WIFI_SETTINGS:
-            case CONFIRM_WIFI_RECONNECT:
-                /* TODO : Wi-Fi再設定処理（手順25で実装） */
+                // CONFIRM：資格情報・ネットワーク設定を消去してAPモードへ移行する
+                // （利用者が明示的に別ネットワークへの切り替えを選んだケースのため消去してよい）
+                resetAndEnterAPMode();
+                currentMode = MODE_WIFI_SETUP;
+                wifiSetupPhase = WIFI_PHASE_GUIDE;
+                wifiSetupCaller = WIFI_CALLER_SETTINGS;
                 break;
+
+            case CONFIRM_WIFI_RECONNECT:
+                // CONFIRM：上記と同じ処理だが、BACKの戻り先が異なるためcallerを分ける
+                resetAndEnterAPMode();
+                currentMode = MODE_WIFI_SETUP;
+                wifiSetupPhase = WIFI_PHASE_GUIDE;
+                wifiSetupCaller = WIFI_CALLER_RECONNECT;
+                break;
+
             case CONFIRM_REFRESH:
                 // CONFIRM：ローディング画面へ遷移する（実際の取得処理はhandleLoadingView()側で行う）
                 currentMode = MODE_LOADING;
                 break;
+
             default:
                 break;
         }
@@ -542,6 +636,31 @@ void handleLoadingView() {
     needsRedraw = true;
     Serial.printf("[LOADING] done. flights = %d, remainingRequests = %d\n", totalFlightCount, remainingRequests);
 }
+
+// Wi-Fi接続失敗の通知（データ再取得時）
+void handleConnectionFailedView() {
+
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // ------------------------------------------------------
+    if (btnCWasPressed()) {
+        // Wi-Fi：Wi-Fi再設定の確認ダイアログへ遷移する
+        currentMode = MODE_CONFIRM_DIALOG;
+        currentConfirm = CONFIRM_WIFI_RECONNECT;
+        needsRedraw = true;
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, currentConfirm = %d\n", currentMode, currentConfirm);
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        drawConnectionFailedView();
+        needsRedraw = false;
+    }
+}
+
 
 // ============================================================
 // SCAN RANGE画面のカーソル初期化処理（現在の設定値の位置に合わせる）

@@ -96,6 +96,11 @@ void initScreenDrawing();
 void drawOuterFrame();
 
 /**
+ * @brief タイトルを持つ画面共通の外枠を描画する
+ */
+void drawOuterFrameWithTitle();
+
+/**
  * @brief 3つのボタンラベルを描画する
  *
  * @param[in] labelA 左ボタンのラベル（nullptrの場合は描画しない）
@@ -136,6 +141,22 @@ void drawCursorHighlight(int x, int y, int width, int height, const char* text,
 // ------------------------------------------------------
 
 /**
+ * @brief Wi-Fi設定関連画面のうち、AP接続案内画面を描画する
+ *
+ * @note BACKラベルの有無はwifiSetupCallerを直接参照して判定する
+ * （WIFI_CALLER_INITの場合のみ、戻り先がないためBACKを表示しない）
+ */
+void drawWiFiSetupGuide();
+
+/**
+ * @brief Wi-Fi設定関連画面のうち、接続失敗画面を描画する
+ *
+ * @note ボタンラベルの出し分けはtotalFlightCountを直接参照して判定する
+ * （キャッシュがある場合のみ、機体情報表示へ戻るBACKとWi-Fi再設定のWi-Fiを併記する）
+ */
+void drawWiFiSetupFailed();
+
+/**
  * @brief 機体情報表示画面（FLIGHT_VIEW）を描画する
  */
 void drawFlightView();
@@ -144,6 +165,11 @@ void drawFlightView();
  * @brief 設定メニュー画面（SETTINGS）を描画する
  */
 void drawSettingsView();
+
+/**
+ * @brief SCAN RANGE選択画面を描画する
+ */
+void drawScanRangeView();
 
 /**
  * @brief 設定内容一覧画面（CONFIG）を描画する
@@ -158,11 +184,6 @@ void drawConfigView();
  * @param[in] message2 詳細説明の2行目（不要な場合はnullptr）
  */
 void drawConfirmDialog(const char* title, const char* message1, const char* message2);
-
-/**
- * @brief SCAN RANGE選択画面を描画する
- */
-void drawScanRangeView();
 
 /**
  * @brief エラー画面を描画する
@@ -183,5 +204,12 @@ void drawNoFlightsView();
  * @param[in] message 処理段階を示すメッセージ（"Connecting to Wi-Fi..."等）
  */
 void drawLoadingScreen(const char* message);
+
+/**
+ * @brief Wi-Fi接続失敗の通知画面（CONNECTION_FAILED_VIEW）を描画する
+ *
+ * @note データ再取得時の接続失敗時のWi-Fi設定関連の接続失敗画面（drawWiFiSetupFailed）とは、レイアウト・文言が異なる別画面
+ */
+void drawConnectionFailedView();
 
 #endif
