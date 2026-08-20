@@ -10,6 +10,7 @@
 #include <WiFi.h>
 
 #include "storage_handler.h"
+#include "ui_handler.h"                                 // 再起動予告画面の描画のため
 #include "wifi_handler.h"
 
 // ============================================================
@@ -105,7 +106,10 @@ void handleSave() {
     //      setup()を再実行することによりinitWiFi() → tryConnectWiFi()を
     //      保存済み資格情報・静的IP設定を使用して実行させる
     //      （RESET ALL実装時と同じ設計方針：ESP.restart()による再起動を採用）
+    //      本体画面には再起動の予告を表示する（表示秒数とdelay()を一致させること）
+    //      このdelay()は、レスポンス送信の完了待ち（送信途中での切断防止）も兼ねる
     // ------------------------------------------------------
-    delay(100);                                         // レスポンス送信の完了を待つ（送信途中での切断を防ぐ）
+    drawLoadingScreen("Restarting in 3 seconds");
+    delay(3000);                                        // レスポンス送信の完了を待つ（送信途中での切断を防ぐ）
     ESP.restart();
 }

@@ -29,10 +29,10 @@ void drawWiFiSetupGuide() {
     // ------------------------------------------------------
     drawOuterFrameWithTitle();
 
-    // ------------------------------------------------------
-    // 手順1（アクセスポイント名は利用者が探すべき対象のため黄色で強調）
-    // ※AP名の描画位置は直前の文字列の実描画幅に依存するため、座標指定ではなく
-    // 　print()によるカーソル送りで連結する（Figmaの座標をそのまま使うと重なるため）
+     // ------------------------------------------------------
+    // 手順1
+    // アクセスポイント名は利用者が探すべき対象のため、独立した行に黄色で強調表示する
+    // ※1文字12px・外枠右端x=315のため、行頭（x=34）から23文字まで表示できる
     // ------------------------------------------------------
     M5.Lcd.setCursor(10, 40);
     M5.Lcd.print("1.");
@@ -40,18 +40,25 @@ void drawWiFiSetupGuide() {
     M5.Lcd.print("Connect your phone to");
 
     M5.Lcd.setCursor(34, 59);
-    M5.Lcd.print("Access Point : ");
+    M5.Lcd.print("Access Point :");
+
     M5.Lcd.setTextColor(TFT_YELLOW);
+    M5.Lcd.setCursor(34, 78);
     M5.Lcd.print(AP_SSID);
     M5.Lcd.setTextColor(TFT_WHITE);             // 以降の描画へ黄色を持ち越さないよう白へ戻す
 
     // ------------------------------------------------------
     // 手順2
+    // 1行では画面幅（23文字）に収まらないため2行に分割している
+    // ※"Follow the instructions"で終端x=310と余裕がないため、文言を伸ばす際は要再計算
     // ------------------------------------------------------
-    M5.Lcd.setCursor(10, 78);
+    M5.Lcd.setCursor(10, 97);
     M5.Lcd.print("2.");
-    M5.Lcd.setCursor(34, 78);
-    M5.Lcd.print("Follow the instructions on the page.");
+    M5.Lcd.setCursor(34, 97);
+    M5.Lcd.print("Follow the instructions");
+
+    M5.Lcd.setCursor(34, 116);
+    M5.Lcd.print("on the page.");
 
     // ------------------------------------------------------
     // ボタンラベル・区切り線（遷移元に応じて出し分け）
@@ -125,7 +132,7 @@ void drawConnectionFailedView() {
     // 2行目（固定メッセージ）
     // ------------------------------------------------------
     M5.Lcd.setCursor(11, 53);
-    M5.Lcd.print("Try changing Wi-Fi settings.");
+    M5.Lcd.print("Change Wi-Fi settings.");
 
     // ------------------------------------------------------
     // ボタンラベル・区切り線

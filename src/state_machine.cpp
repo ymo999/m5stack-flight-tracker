@@ -16,8 +16,8 @@
 #include "wifi_handler.h"                   // データ取得中（MODE_LOADING）でのWi-Fi接続・切断
 
 // 現在の画面状態の実体
-// 起動時の分岐ロジック（Wi-Fi接続・APIキー・基準地点の登録状況による初期状態の判定）は未実装のため、
-// 暫定的にMODE_WIFI_SETUP固定とする
+// 実際の初期状態はinitStateMachine()がWi-Fiの状態に応じて決定するため、
+// この初期値は起動シーケンス完了までの暫定値にすぎない
 SystemMode currentMode = MODE_WIFI_SETUP;
 
 // 現在表示中の確認ダイアログの種別の実体
@@ -26,7 +26,15 @@ ConfirmTarget currentConfirm = CONFIRM_NONE;
 
 // SETTINGS画面の遷移元の実体
 // MODE_MENU_VIEW以外の状態では意味を持たないため、初期値はMENUCALLER_NONEとする
-MenuCaller menuCaller = MENUCALLER_NONE;  
+MenuCaller menuCaller = MENUCALLER_NONE;
+
+// Wi-Fi設定関連画面の表示フェーズの実体
+// MODE_WIFI_SETUP以外の状態では意味を持たないため、初期値はWIFI_PHASE_NONEとする
+WiFiSetupPhase wifiSetupPhase = WIFI_PHASE_NONE;
+
+// AP接続案内画面の遷移元の実体
+// MODE_WIFI_SETUP以外の状態では意味を持たないため、初期値はWIFI_CALLER_NONEとする
+WiFiSetupCaller wifiSetupCaller = WIFI_CALLER_NONE;
 
 // 画面の再描画が必要かどうかを示すフラグの実体
 // 起動直後は必ず1回描画するため、初期値はtrueとする
@@ -59,6 +67,7 @@ void initStateMachine() {
         // 資格情報あり・接続成功：currentModeはここでは変更しない
         // TODO : APIキー・基準地点の登録状況による分岐実装
         // （実装までは呼び出し元のmain.cppの一時テストコードでcurrentModeを設定）
+        Serial.println("[INIT] Wi-Fi connected. currentMode will be set by the caller (temporary)");
     } else {
         // 資格情報はあるが接続失敗
         currentMode = MODE_WIFI_SETUP;
@@ -95,7 +104,6 @@ void updateStateMachine() {
 
 // Wi-Fi設定関連（AP接続案内／接続失敗）
 void handleWiFiSetupView() {
-
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // 同じボタンでも表示フェーズによって意味が変わるため、まずフェーズで分岐する
@@ -211,13 +219,11 @@ void handleFlightView() {
 
 // 設定メニュー（SETTINGS）
 void handleMenuView() {
-
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
-
-    // デバッグ用
-    int targetOrCaller = 0;
+    // // デバッグ用
+    // int targetOrCaller = 0;
 
     if (btnAWasPressed()) {
         // BACK：遷移元に応じて戻り先を分岐
@@ -260,7 +266,7 @@ void handleMenuView() {
             case SETTINGS_ITEM_WIFI:
                 currentMode = MODE_CONFIRM_DIALOG;
                 currentConfirm = CONFIRM_WIFI_SETTINGS;
-                targetOrCaller = currentConfirm;
+                // targetOrCaller = currentConfirm;
                 break;
             case SETTINGS_ITEM_SCAN_RANGE:
                 resetScanRangeCursor();
@@ -272,7 +278,7 @@ void handleMenuView() {
             case SETTINGS_ITEM_RESET_ALL:
                 currentMode = MODE_CONFIRM_DIALOG;
                 currentConfirm = CONFIRM_RESET;
-                targetOrCaller = currentConfirm;
+                // targetOrCaller = currentConfirm;
                 break;
         }
         needsRedraw = true;
@@ -471,7 +477,6 @@ void handleConfirmDialog() {
 
 // エラー表示
 void handleErrorView() {
-
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // 機体数を判定条件に入れることにより誤操作でラベル非表示のボタンが押下されてもスルーさせる
@@ -491,7 +496,6 @@ void handleErrorView() {
         if (totalFlightCount == 0) {
             currentMode = MODE_LOADING;
             needsRedraw = true;
-            /* TODO : 再取得処理の開始（手順24実装後に対応） */
         }
         // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
         return;
@@ -521,7 +525,6 @@ void handleErrorView() {
 
 // 機体0件
 void handleNoFlightsView() {
-
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
@@ -529,7 +532,6 @@ void handleNoFlightsView() {
         // RETRY：確認ダイアログを挟まず、そのまま再取得へ
         currentMode = MODE_LOADING;
         needsRedraw = true;
-        /* TODO : 再取得処理の開始（手順24実装後に対応） */
         // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
         return;
     }
@@ -558,7 +560,6 @@ void handleNoFlightsView() {
 // 1回の呼び出し内でWi-Fi接続〜APIリクエスト〜解析まで完結させる
 //（操作可能なボタンは配置しておらず処理中に入力を受け付ける必要はない）
 void handleLoadingView() {
-    
     // ------------------------------------------------------
     // 1. Wi-Fi接続
     // ------------------------------------------------------
@@ -566,11 +567,9 @@ void handleLoadingView() {
     enableWiFi();
 
     if (!tryConnectWiFi()) {
-        // Wi-Fi接続失敗：CONNECTION_FAILED_VIEW（Wi-Fi再接続フロー）は未実装のため、暫定的にERROR_VIEWへ倒す
+        // Wi-Fi接続失敗：Wi-Fi再接続フローの通知画面へ遷移する
         disableWiFi();
-        currentError.message = "Wi-Fi connection failed";
-        currentError.code = "wifi_failed";
-        currentMode = MODE_ERROR_VIEW;
+        currentMode = MODE_CONNECTION_FAILED;
         needsRedraw = true;
         Serial.println("[LOADING] Wi-Fi connection failed");
         return;
@@ -639,7 +638,6 @@ void handleLoadingView() {
 
 // Wi-Fi接続失敗の通知（データ再取得時）
 void handleConnectionFailedView() {
-
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
@@ -693,6 +691,10 @@ void executeResetAll() {
     clearCache();
 
     // Serial.println("[RESET] All settings cleared. Restarting...");
+
+    // 再起動の予告を表示（利用者に処理中であることを伝えるため、表示秒数とdelay()を一致させる）
+    drawLoadingScreen("Restarting in 3 seconds");
+    delay(3000);
 
     // 実機再起動（全グローバル変数・静的変数が確実に初期状態へ戻る）
     ESP.restart();
