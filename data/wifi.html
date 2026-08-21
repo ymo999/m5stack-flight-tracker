@@ -3,239 +3,220 @@
 filename : wifi.html
 description : 初回設定ページ - Initial Setup Page (Wi-Fi Credentials and Network Information)
 created : 2026-08-07
-update : 
+update : 2026-08-21
 -->
-<html lang="en">
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wi-Fi Setup</title>
+<title>Wi-Fi設定</title>
 <style>
-    /* ============================================================
-       トークン定義（CDN不要・システムフォントのみで構成）
-       APモード中はインターネットに接続できないため、
-       外部フォント／外部アセットは一切使用しない。
-       ============================================================ */
-    :root {
-        --bg: #0B1220;
-        --panel: #121B2E;
-        --panel-border: #223049;
-        --amber: #F5A623;
-        --cyan: #4FD1C5;
-        --text: #E8EDF4;
-        --text-muted: #7C8AA0;
-        --danger: #E8615A;
+/* ============================================================
+   トークン定義（CDN不要・システムフォントのみで構成）
+   APモード中はインターネットに接続できないため、
+   外部フォント／外部アセットは一切使用しない。
+   ============================================================ */
+:root {
+    --bg: #0B1220;
+    --panel: #121B2E;
+    --panel-border: #223049;
+    --amber: #F5A623;
+    --cyan: #4FD1C5;
+    --text: #E8EDF4;
+    --text-muted: #7C8AA0;
+    --danger: #E8615A;
+    --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Hiragino Sans", "Yu Gothic", sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    -webkit-font-smoothing: antialiased;
+}
 
-        --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-        --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-    }
+/* ============================================================
+   フォーム本体
+   ============================================================ */
+form {
+    padding: 22px 24px 26px;
+}
+.field {
+    margin-bottom: 18px;
+}
+.field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 7px;
+    text-transform: uppercase;
+}
+.field .hint {
+    display: block;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: normal;
+    line-height: 1.4;
+}
+input[type="text"],
+input[type="password"],
+select {
+    width: 100%;
+    background: #0D1626;
+    border: 1px solid var(--panel-border);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 11px 12px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s ease;
+    -webkit-appearance: none;
+    appearance: none;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+select:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.18);
+}
+select {
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237C8AA0'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 32px;
+}
 
-    * { box-sizing: border-box; }
+/* 静的IP関連フィールド：折りたたみ */
+#staticFields {
+    display: none;
+    padding-top: 4px;
+    border-top: 1px dashed var(--panel-border);
+    margin-top: 4px;
+}
+#staticFields .field:first-child {
+    margin-top: 16px;
+}
 
-    body {
-        margin: 0;
-        min-height: 100vh;
-        background: var(--bg);
-        color: var(--text);
-        font-family: var(--font-display);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 24px 16px;
-        -webkit-font-smoothing: antialiased;
-    }
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    letter-spacing: 0.04em;
+}
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 0 3px rgba(79, 209, 197, 0.18);
+    flex-shrink: 0;
+}
 
-    /* ============================================================
-       フォーム本体
-       ============================================================ */
-    form {
-        padding: 22px 24px 26px;
-    }
+button {
+    width: 100%;
+    background: var(--amber);
+    color: #1A1206;
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    border: none;
+    border-radius: 8px;
+    padding: 13px;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+button:hover { filter: brightness(1.08); }
+button:active { filter: brightness(0.94); }
+button:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+}
 
-    .field {
-        margin-bottom: 18px;
-    }
-
-    .field label {
-        display: block;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        color: var(--text-muted);
-        margin-bottom: 7px;
-        text-transform: uppercase;
-    }
-
-    .field .hint {
-        display: block;
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 6px;
-        font-weight: 400;
-        text-transform: none;
-        letter-spacing: normal;
-        line-height: 1.4;
-    }
-
-    input[type="text"],
-    input[type="password"],
-    select {
-        width: 100%;
-        background: #0D1626;
-        border: 1px solid var(--panel-border);
-        color: var(--text);
-        font-family: var(--font-mono);
-        font-size: 14px;
-        padding: 11px 12px;
-        border-radius: 8px;
-        outline: none;
-        transition: border-color 0.15s ease;
-        -webkit-appearance: none;
-        appearance: none;
-    }
-
-    input[type="text"]:focus,
-    input[type="password"]:focus,
-    select:focus {
-        border-color: var(--amber);
-        box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.18);
-    }
-
-    select {
-        background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%237C8AA0'/%3E%3C/svg%3E");
-        background-repeat: no-repeat;
-        background-position: right 14px center;
-        padding-right: 32px;
-    }
-
-    /* 静的IP関連フィールド：折りたたみ */
-    #staticFields {
-        display: none;
-        padding-top: 4px;
-        border-top: 1px dashed var(--panel-border);
-        margin-top: 4px;
-    }
-
-    #staticFields .field:first-child {
-        margin-top: 16px;
-    }
-
-    .status-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-family: var(--font-mono);
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-bottom: 20px;
-        letter-spacing: 0.04em;
-    }
-
-    .status-dot {
-        width: 7px;
-        height: 7px;
-        border-radius: 50%;
-        background: var(--cyan);
-        box-shadow: 0 0 0 3px rgba(79, 209, 197, 0.18);
-        flex-shrink: 0;
-    }
-
-    button {
-        width: 100%;
-        background: var(--amber);
-        color: #1A1206;
-        font-family: var(--font-display);
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 0.02em;
-        border: none;
-        border-radius: 8px;
-        padding: 13px;
-        cursor: pointer;
-        transition: filter 0.15s ease;
-    }
-
-    button:hover { filter: brightness(1.08); }
-    button:active { filter: brightness(0.94); }
-
-    button:focus-visible {
-        outline: 2px solid var(--cyan);
-        outline-offset: 2px;
-    }
-
-    /* ============================================================
-       パスワード表示切替アイコン
-       ============================================================ */
-    .password-wrap {
-        position: relative;
-    }
-
-    .password-wrap input[type="password"],
-    .password-wrap input[type="text"] {
-        padding-right: 40px;            /* アイコン分の余白を確保 */
-    }
-
-    .password-toggle {
-        position: absolute;
-        top: 50%;
-        right: 10px;
-        transform: translateY(-50%);
-        width: 22px;
-        height: 22px;
-        padding: 0;
-        background: none;
-        border: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .password-toggle svg {
-        width: 20px;
-        height: 20px;
-        stroke: var(--text-muted);
-        transition: stroke 0.15s ease;
-    }
-
-    .password-toggle:hover svg {
-        stroke: var(--text);
-    }
-
-    .password-toggle:focus-visible {
-        outline: 2px solid var(--cyan);
-        outline-offset: 2px;
-        border-radius: 4px;
-    }
+/* ============================================================
+   パスワード表示切替アイコン
+   ============================================================ */
+.password-wrap {
+    position: relative;
+}
+.password-wrap input[type="password"],
+.password-wrap input[type="text"] {
+    padding-right: 40px; /* アイコン分の余白を確保 */
+}
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.password-toggle svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--text-muted);
+    transition: stroke 0.15s ease;
+}
+.password-toggle:hover svg {
+    stroke: var(--text);
+}
+.password-toggle:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
 </style>
 </head>
 <body>
-
 <div class="panel">
     <div class="header">
         <p class="eyebrow">M5Stack Flight Tracker</p>
-        <h1 class="title">Wi-Fi Setup</h1>
-        <p class="subtitle" lang="ja">このデバイスをWi-Fiネットワークに接続してください</p>
+        <h1 class="title">Wi-Fi設定</h1>
+        <p class="subtitle">このデバイスをWi-Fiネットワークに接続してください</p>
     </div>
 
     <form action="/save" method="POST">
 
         <!-- SSID / パスワード -->
         <div class="field">
-            <label for="ssid">Network Name (SSID)</label>
+            <label for="ssid">ネットワーク名（SSID）</label>
             <input type="text" id="ssid" name="ssid" required>
         </div>
 
         <!-- パスワード入力欄（アイコンタップで表示/非表示切替） -->
         <div class="field">
-            <label for="password">Password</label>
+            <label for="password">パスワード</label>
             <div class="password-wrap">
                 <input type="password" id="password" name="password">
                 <button type="button" class="password-toggle" id="passwordToggle"
-                        onclick="togglePasswordVisibility()" aria-label="Show password">
+                        onclick="togglePasswordVisibility()" aria-label="パスワードを表示">
                     <!-- 初期状態（非表示中）：目に斜線が入ったアイコン -->
                     <svg id="eyeIcon" viewBox="0 0 24 24" fill="none" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
+                         stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
                         <line x1="1" y1="1" x2="23" y2="23" />
                     </svg>
@@ -245,7 +226,7 @@ update :
 
         <!-- 接続方式（DHCP／静的） -->
         <div class="field">
-            <label for="connType">Connection Type</label>
+            <label for="connType">接続方式</label>
             <select id="connType" name="connType" onchange="toggleStaticFields()">
                 <option value="dhcp" selected>自動 (DHCP)</option>
                 <option value="static">手動</option>
@@ -255,60 +236,58 @@ update :
         <!-- 静的IP関連（「静的」選択時のみ表示） -->
         <div id="staticFields">
             <div class="field">
-                <label for="ip">Device IP</label>
+                <label for="ip">デバイスIP</label>
                 <input type="text" id="ip" name="ip" placeholder="192.168.1.50">
             </div>
             <div class="field">
-                <label for="gateway">Gateway</label>
+                <label for="gateway">ゲートウェイ</label>
                 <input type="text" id="gateway" name="gateway" placeholder="192.168.1.1">
             </div>
             <div class="field">
-                <label for="subnet">Subnet Mask</label>
+                <label for="subnet">サブネットマスク</label>
                 <input type="text" id="subnet" name="subnet" placeholder="255.255.255.0">
             </div>
             <div class="field">
-                <label for="dns">DNS Server</label>
+                <label for="dns">DNSサーバー</label>
                 <input type="text" id="dns" name="dns" placeholder="192.168.1.1">
-                <span class="hint" lang="ja">空欄の場合はゲートウェイと同じアドレスを使用します</span>
+                <span class="hint">空欄の場合はゲートウェイと同じアドレスを使用します</span>
             </div>
         </div>
 
-        <button type="submit">Connect</button>
+        <button type="submit">接続</button>
     </form>
 </div>
 
 <script>
-    // 接続方式プルダウンの値に応じて、静的IP関連欄の表示・非表示を切り替える
-    function toggleStaticFields() {
-        const isStatic = document.getElementById("connType").value === "static";
-        document.getElementById("staticFields").style.display = isStatic ? "block" : "none";
-    }
+// 接続方式プルダウンの値に応じて、静的IP関連欄の表示・非表示を切り替える
+function toggleStaticFields() {
+    const isStatic = document.getElementById("connType").value === "static";
+    document.getElementById("staticFields").style.display = isStatic ? "block" : "none";
+}
 
-    // パスワード欄の表示/非表示を切り替える（type属性の切替＋アイコンSVGの差替）
-    function togglePasswordVisibility() {
-        const input = document.getElementById("password");
-        const button = document.getElementById("passwordToggle");
-        const eyeIcon = document.getElementById("eyeIcon");
-        const isHidden = input.type === "password";
+// パスワード欄の表示/非表示を切り替える（type属性の切替＋アイコンSVGの差替）
+function togglePasswordVisibility() {
+    const input = document.getElementById("password");
+    const button = document.getElementById("passwordToggle");
+    const eyeIcon = document.getElementById("eyeIcon");
+    const isHidden = input.type === "password";
 
-        // 開いた目と閉じた目のパスデータ
-        const eyeOnPaths = `
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-        `;
+    // 開いた目と閉じた目のパスデータ
+    const eyeOnPaths = `
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+    `;
+    const eyeOffPaths = `
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+    `;
 
-        const eyeOffPaths = `
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-            <line x1="1" y1="1" x2="23" y2="23"></line>
-        `;
+    input.type = isHidden ? "text" : "password";
+    button.setAttribute("aria-label", isHidden ? "パスワードを非表示" : "パスワードを表示");
 
-        input.type = isHidden ? "text" : "password";
-        button.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
-
-        // 表示中：斜線なしの目のアイコン／非表示中：斜線ありの目のアイコン
-        eyeIcon.innerHTML = isHidden ? eyeOnPaths : eyeOffPaths;
-    }
+    // 表示中：斜線なしの目のアイコン／非表示中：斜線ありの目のアイコン
+    eyeIcon.innerHTML = isHidden ? eyeOnPaths : eyeOffPaths;
+}
 </script>
-
 </body>
 </html>
