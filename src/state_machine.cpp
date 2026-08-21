@@ -661,7 +661,7 @@ void handleLoadingView() {
     // ------------------------------------------------------
     // 4. キャッシュ保存・画面遷移（0件はエラーではないためNO_FLIGHTS_VIEWへ）
     // ------------------------------------------------------
-    saveCache(foundFlights, totalFlightCount, remainingRequests);
+    saveCache(foundFlights, totalFlightCount, remainingRequests, lastUpdateTime);
     currentDisplayIndex = 0;                // 1機目から表示する
 
     currentMode = (totalFlightCount > 0) ? MODE_FLIGHT_VIEW : MODE_NO_FLIGHTS_VIEW;

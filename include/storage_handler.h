@@ -144,27 +144,29 @@ void clearNetworkConfig();
 // ------------------------------------------------------
 
 /**
- * @brief 機体情報キャッシュ・残りリクエスト数をLittleFS（cache.json）へ保存する
+ * @brief 機体情報キャッシュ・残リクエスト数・最終取得日時をLittleFS（cache.json）へ保存する
  *
  * @note 両者を1ファイルに統合することで、書き込み回数を削減している（フラッシュ摩耗対策）
  *
  * @param[in] flights 機体データの配列
  * @param[in] flightCount 機体数
  * @param[in] remainingRequests 残リクエスト数
+ * @param[in] lastUpdateTime 取得日時（MM/DD HH:MM形式）
  * @return 保存成否
  */
-bool saveCache(const FlightData flights[], int flightCount, int remainingRequests);
+bool saveCache(const FlightData flights[], int flightCount, int remainingRequests, const String& lastUpdateTime);
 
 /**
- * @brief 機体情報キャッシュ・残りリクエスト数をLittleFS（cache.json）から読み込む
+ * @brief 機体情報キャッシュ・残リクエスト数・最終取得日時をLittleFS（cache.json）から読み込む
  *
  * @param[out] flights 機体データの格納先配列
  * @param[out] flightCount 機体数の格納先
  * @param[out] remainingRequests 残リクエスト数の格納先
+ * @param[out] lastUpdateTime 取得日時の格納先（未保存時は"--/-- --:--"）
  * @return true 読み込み成功
  * @return false 失敗（ファイル未存在またはパース失敗）
  */
-bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests);
+bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests, String& lastUpdateTime);
 
 /**
  * @brief 残りリクエスト数のみをLittleFS（cache.json）から読み込む（CONFIG画面等での表示用）

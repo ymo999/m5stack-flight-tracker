@@ -65,7 +65,7 @@ void setup() {
     // 起動時にキャッシュを復元する
     // （接続失敗画面のボタン出し分け等でtotalFlightCountを参照するため）
     int remainingRequests = 0;
-    loadCache(foundFlights, totalFlightCount, remainingRequests);
+    loadCache(foundFlights, totalFlightCount, remainingRequests, lastUpdateTime);
     Serial.printf("[BOOT] loadCache() done. flights: %d, remainingRequests: %d\n", totalFlightCount, remainingRequests);
 
     // Wi-Fi接続には最大60秒かかるため、処理中であることを画面に示す
@@ -73,7 +73,16 @@ void setup() {
     drawLoadingScreen("Connecting to Wi-Fi...");
 
     initWiFi();
-    // Wi-Fi接続失敗検証用 ※後で必ず戻すこと ↓ ここから
+
+    /* Wi-Fi接続失敗検証用テストコード ※後で必ず戻すこと
+       ※ここでは誤った情報を上書きしているだけ（Wi-Fi設定自体は「initWifi()」で終わっている）
+       誤った情報による接続エラー動作を確認したい場合は、この後
+       ・FLIGHT_VIEWの最終機体→NEXT→再取得
+       または
+       ・再起動
+       を行うこと
+    */
+    // ↓ ここから
     // String currentSsid;
     // loadWifiSsid(currentSsid);
     // saveWifiCredentials(currentSsid, "wrong_password_for_test");

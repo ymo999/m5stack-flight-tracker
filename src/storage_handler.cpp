@@ -224,9 +224,10 @@ void clearNetworkConfig() {
  * データコピーの手間を軽減するため配列はポインタで受け取る
  * この関数では配列の値を読み取るだけで書き換えないため、const修飾子を付加している（loadCacheは書き込みを行うため付加しない）
 */
-bool saveCache(const FlightData flights[], int flightCount, int remainingRequests) {
+bool saveCache(const FlightData flights[], int flightCount, int remainingRequests, const String& lastUpdateTime) {
     JsonDocument doc;
     doc["remainingRequests"] = remainingRequests;
+    doc["lastUpdateTime"] = lastUpdateTime;
 
     // flightCount（機体数）の分ループし、機体データ（ポインタ経由で参照）をJSON配列に1機ずつセット
     JsonArray flightArray = doc["flights"].to<JsonArray>();
@@ -245,7 +246,7 @@ bool saveCache(const FlightData flights[], int flightCount, int remainingRequest
         f["squawk"] = flights[i].squawk;
     }
 
-    // cache.jsonは高頻度書き込みのため差分チェックは行わない
+    // cache.jsonは差分チェックは行わない（毎回差分が発生するため差分チェックの意味がない）
     File file = LittleFS.open(CACHE_PATH, "w");
     if (!file) {
         // Serial.println("Failed to open cache.json for writing");
@@ -261,11 +262,12 @@ bool saveCache(const FlightData flights[], int flightCount, int remainingRequest
  * 配列はポインタ、件数・残リクエスト数は参照で受け取ることでコピーの手間を防ぐ
  * 残リクエスト数は、書き込み回数低減のためキャッシュと同時に記録している
  */
-bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests) {
+bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests, String& lastUpdateTime) {
     File file = LittleFS.open(CACHE_PATH, "r");
     if (!file) {
         flightCount = 0;
-        return false;   // 未存在＝キャッシュなし
+        lastUpdateTime = "--/-- --:--";
+        return false;                                               // JSONファイルなし＝キャッシュなし
     }
 
     JsonDocument doc;
@@ -275,10 +277,12 @@ bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests) {
     if (error) {
         // Serial.println("Failed to parse cache.json");
         flightCount = 0;
+        lastUpdateTime = "--/-- --:--";
         return false;
     }
 
     remainingRequests = doc["remainingRequests"] | 0;
+    lastUpdateTime = doc["lastUpdateTime"] | "--/-- --:--";
 
     JsonArray flightArray = doc["flights"].as<JsonArray>();
     flightCount = 0;
