@@ -1,6 +1,6 @@
 # プロジェクト仕様書：M5Stack 航空機スキャンシステム
 
-**更新日時：2026-08-20**
+**更新日時：2026-08-21**
 
 本仕様書は、M5Stack（ESP32）を使用した「位置情報を基準にした周辺航空機のライブスキャンシステム」の開発プロジェクト仕様をまとめたものである。
 APIとして「AirLabs API」を採用し、Wi-Fi接続のハードコーディング回避策やデバイス上でのパース・表示処理について定義する。
@@ -641,34 +641,12 @@ HTTPステータスコードに依存せず、**レスポンス本文の`respons
 失敗時：{"error":{"message":"Unknown api_key","code":"unknown_api_key"},"terms":"..."}
 ```
 
-```cpp
-// APIキーの有効性を検証する
-// 戻り値: true = 有効、false = 無効または通信失敗
-bool validateApiKey(const char* apiKey) {
-    String url = "https://airlabs.co/api/v9/ping?api_key=" + String(apiKey);
-
-    HTTPClient http;
-    http.begin(url);
-    int httpCode = http.GET();
-
-    bool isValid = false;
-
-    if (httpCode > 0) {
-        String payload = http.getString();
-
-        JsonDocument doc;
-        DeserializationError error = deserializeJson(doc, payload);
-
-        if (!error) {
-            const char* response = doc["response"];
-            isValid = (response != nullptr && strcmp(response, "pong") == 0);
-        }
-    }
-
-    http.end();
-    return isValid;
-}
 ```
+成功時：{"request":{...},"response":"pong","terms":"..."}
+失敗時：{"error":{"message":"Unknown api_key","code":"unknown_api_key"},"terms":"..."}
+```
+
+実装は`api_handler.h`/`.cpp`（`validateApiKey()`）を参照。証明書検証省略の方針は2.1.2節を参照。
 
 **検証結果の表示場所：**
 
@@ -686,26 +664,31 @@ bool validateApiKey(const char* apiKey) {
 [成功: 完了ページ / 失敗: エラー＋再入力フォーム]
 ```
 
-```cpp
-// Webサーバー：APIキー送信を受け取るハンドラ
-server.on("/api_key", HTTP_POST, []() {
-    String apiKey = server.arg("apikey");
-
-    if (validateApiKey(apiKey.c_str())) {
-        saveApiKeyToNVS(apiKey);
-        server.send(200, "text/html", getSuccessPage());
-    } else {
-        server.send(200, "text/html", getErrorPage("Invalid API key. Please check and try again."));
-    }
-});
-```
+実装は`web_handler.h`/`.cpp`（`handleApiKeySave()`）を参照。
 
 **本体側の画面遷移：**
-* 成功画面（本体側）は表示しない。成功通知はスマートフォン側に表示されるため、本体側で重ねて通知する必要性が低い。
-* 設定完了を検知したら、次の画面（初回起動時は基準地点設定、設定変更時はSETTINGS）へ自動的に遷移する。
+* 設定完了（ping検証成功）を検知したら、本体側は自動的にSETTINGSへ遷移する。検知の仕組みは、Webサーバー側で保存成功時にフラグ（`qrSetupCompleted`）をセットし、QRコード誘導画面（`MODE_QR_VIEW`）側で毎フレーム確認する方式とする。
+* 初回起動時の自動遷移（基準地点設定画面への遷移）は、起動時分岐ロジック（APIキー・基準地点の登録状況判定）の実装とあわせて対応する（8.2-D後半、未実装）。
+* 実装は`web_handler.h`/`.cpp`（`qrSetupCompleted`）、`state_machine.cpp`（`handleMenuView()`・`handleQrView()`）を参照。
 
 **残りリクエスト数について：**
 pingのレスポンスには`key.limits_total`（残りリクエスト数）が含まれるが、**本システムでは使用しない**。残りリクエスト数は機体情報取得時（`/flights`）のレスポンスから取得する（2.5参照）。
+
+### 3.4.2 設定用Webサーバーの起動・停止管理
+
+APIキー設定・基準地点設定用のWebサーバー（stationモード）は、常時起動しておくのではなく、**QRコード誘導画面（`MODE_QR_VIEW`）に滞在している間のみ**起動する。
+
+**設計方針：**
+* `WebServer`インスタンス自体は、APモード用（3.1参照）と共用する単一のグローバルインスタンスとする。APモードとstationモード設定用サーバーが同時に起動することはない（stationモードで接続済みの状態でなければ本画面へ到達できないため）。
+* `startConfigServer()`：SETTINGSから`API KEY`または`LOCATION`を選択した際に呼ぶ。対応するルート（`/api_key`または`/location`）を登録した上で`server.begin()`する。
+* `stopConfigServer()`：QRコード誘導画面から離れる際（`BACK`押下時、または保存完了による自動遷移時）に呼ぶ。`server.stop()`によりサーバーを停止する。
+* `isConfigServerActive()`：サーバーが起動中かどうかを返す。`main.cpp`の`loop()`内で、この関数が`true`を返す間のみ`server.handleClient()`を呼び出す（`isApModeActive()`時に`handleCaptivePortal()`を呼ぶ既存の仕組みと同じパターン）。
+
+**採用理由：**
+* 常時起動しておくと、不要な待ち受けポートが開いたままになる。利用者が実際に設定作業を行っている間だけサーバーを起動する方が、設計として意図が明確になる。
+* APモード用の仕組み（`enterAPMode()`/`exitAPMode()`/`isApModeActive()`）と対になる構成にすることで、既存のパターンを踏襲でき、実装の一貫性を保てる。
+
+実装は`web_handler.h`/`.cpp`（`startConfigServer()`/`stopConfigServer()`/`isConfigServerActive()`）、`main.cpp`（`loop()`）を参照。
 
 ### 3.5 Wi-Fi電源管理仕様（低消費電力運用）
 
@@ -832,6 +815,7 @@ Arduino標準の`IPAddress::fromString()`を使用する。パースと形式検
 
 * **手順①②**：QRコード表示には、M5Unified（M5GFX）組み込みの`M5.Lcd.qrcode()`を使用する（5.8参照）。この設定用Webページは、M5Stackが**stationモードで自宅Wi-Fi等に接続済みの状態**でホストする（3.4節のAPIキー登録用Webページと同様の位置づけであり、初回Wi-Fi未設定時のAPモードとは異なる）。
 * **手順③**：「M5Stackに送信」ボタンで `/set?lat=xx&lon=xx` にリクエストを送信する。
+  * **GETリクエストを採用する理由**：APIキー設定（3.4参照）はPOSTで送信するのに対し、基準地点はPOSTを使わずGETとする。これは4.3節の通り基準地点が機密情報ではなく、URLにパラメータとして緯度経度が残ること自体に問題がないためである。
 * **手順④**：登録済みの緯度経度は、以降のAirLabs APIリクエスト（2.1参照）における基準地点として使用する。
 * **登録タイミング**：初回起動時（未登録の場合、1.1参照）に加え、設定画面（BtnC経由）からいつでも再登録・変更できるようにする。
 
@@ -847,6 +831,10 @@ Arduino標準の`IPAddress::fromString()`を使用する。パースと形式検
 ### 4.4 設定用Webページのその他仕様
 
 * **お気に入り・履歴機能**: メモリ・開発規模を考慮し、初期実装では省略する。
+
+**表示言語：日本語（確定）**
+
+`wifi.html`・`api_key.html`（成功／失敗ページ含む）・`location.html`はいずれも日本語UIとする。当初の仕様書サンプルコード・モックアップは英語表記だったが、実装時に全面的に日本語化した。`<html lang="ja">`とし、ページ全体を日本語で統一する（英語の案内文と日本語の注釈が混在する状態は避ける）。
 
 **HTMLの管理方式：LittleFS配置（確定）**
 
@@ -1475,15 +1463,15 @@ APIキー設定（3.4参照）および基準地点設定（4.2参照）は、�
 
 ```
 +--------------------------------------------+
-|            API KEY SETUP                    |  size2
+|            API KEY SETUP                    |  size2（中央揃え）
 |         +-----------------+                 |
 |         |                 |                 |
 |         |    QR CODE      |                 |  110px前後
 |         |                 |                 |
 |         +-----------------+                 |
-|          Waiting for input...               |  size1 / 黄色
-|   Connect to the same Wi-Fi, then scan      |  size1
-|      http://192.168.xxx.xxx/api_key         |  size2
+|  Waiting for input...                       |  size1 / 黄色（左揃え）
+|  Connect to the same Wi-Fi, then scan       |  size1（左揃え）
+|  http://192.168.xxx.xxx/api_key             |  size1（左揃え）
 +--------------------------------------------+
 |  BACK                                       |  ← 設定画面から遷移時のみ
 +--------------------------------------------+
@@ -1493,20 +1481,22 @@ APIキー設定（3.4参照）および基準地点設定（4.2参照）は、�
 
 ```
 +--------------------------------------------+
-|           LOCATION SETUP                    |  size2
+|           LOCATION SETUP                    |  size2（中央揃え）
 |         +-----------------+                 |
 |         |                 |                 |
 |         |    QR CODE      |                 |  110px前後
 |         |                 |                 |
 |         +-----------------+                 |
-|     Current : 34.979, 138.383               |  size2（現在の設定値）
-|          Waiting for input...               |  size1 / 黄色
-|   Connect to the same Wi-Fi, then scan      |  size1
-|      http://192.168.xxx.xxx/location        |  size2
+|  Current : 34.979, 138.383                  |  size2（左揃え・現在の設定値）
+|  Waiting for input...                       |  size1 / 黄色（左揃え）
+|  Connect to the same Wi-Fi, then scan       |  size1（左揃え）
+|  http://192.168.xxx.xxx/location            |  size1（左揃え）
 +--------------------------------------------+
 |  BACK                                       |  ← 設定画面から遷移時のみ
 +--------------------------------------------+
 ```
+
+（実装時にFigma実データ（node-id: 43:28、43:17）を確認した結果、タイトル以外は左揃え（x=18）と判明したため、当初案の中央揃えから変更した経緯がある）
 
 **2画面の差分：**
 
@@ -1575,10 +1565,9 @@ drawSetupQRScreen("API KEY SETUP", "/api_key", nullptr, "Waiting for input...", 
 // 設定画面から：BACKあり
 drawSetupQRScreen("API KEY SETUP", "/api_key", nullptr, "Waiting for input...", "BACK");
 
-// 基準地点設定（現在値を表示）
-char currentLoc[40];
-sprintf(currentLoc, "Current : %.3f, %.3f", baseLat, baseLng);
-drawSetupQRScreen("LOCATION SETUP", "/location", currentLoc, "Waiting for input...", "BACK");
+// 基準地点設定（現在値を表示。sprintf不使用、Stringクラスの機能で整形）
+String currentLoc = "Current : " + String(baseLat, 3) + ", " + String(baseLng, 3);
+drawSetupQRScreen("LOCATION SETUP", "/location", currentLoc.c_str(), "Waiting for input...", "BACK");
 ```
 
 **フォントサイズの使い分け（関数内で固定）：**
@@ -1589,7 +1578,7 @@ drawSetupQRScreen("LOCATION SETUP", "/location", currentLoc, "Waiting for input.
 | extraInfo（現在の緯度経度） | `setTextSize(2)` | 数値を精読する情報のため |
 | statusMsg（`Waiting for input...`） | `setTextSize(1)` | 補足的な状態表示 |
 | 固定文（`Connect to the same Wi-Fi, then scan`） | `setTextSize(1)` | 説明文 |
-| URL | `setTextSize(2)` | 手入力時の読み間違い防止 |
+| URL | `setTextSize(1)` | 実機検証の結果、size2では画面幅（320px）を超えて文字が見切れることが判明したため縮小（トラブルシューティング記録参照） |
 
 `extraInfo`を使う画面はLOCATION SETUPのみであり、サイズを引数化する必要はない（過剰設計の回避）。
 
