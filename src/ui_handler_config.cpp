@@ -86,8 +86,7 @@ void drawConfigView() {
     M5.Lcd.print(config.scanRange);
 
     // ------------------------------------------------------
-    // ボタンラベル・区切り線（size(2)のまま）
+    // ボタンラベル・区切り線
     // ------------------------------------------------------
-    M5.Lcd.setTextSize(2);
     drawButtonLabels("BACK", nullptr, nullptr);
 }

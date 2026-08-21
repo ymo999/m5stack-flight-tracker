@@ -40,6 +40,5 @@ void drawConfirmDialog(const char* title, const char* message1, const char* mess
     // ------------------------------------------------------
     // ボタンラベル・区切り線
     // ------------------------------------------------------
-    M5.Lcd.setTextSize(2);
     drawButtonLabels("CANCEL", nullptr, "CONFIRM");
 }

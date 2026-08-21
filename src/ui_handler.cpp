@@ -116,8 +116,8 @@ void drawTitle(const char* title) {
 // 3つのボタンラベルを描画する
 // ============================================================
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC) {
-
     M5.Lcd.setTextColor(TFT_WHITE);                                                 // 直前の描画で色が変更されていても、ボタンラベルを常に白に固定するため
+    M5.Lcd.setTextSize(2);                                                          // 直前の描画でフォントサイズが変更されていても、ボタンラベルを常にTextSize(2)に固定するため
     M5.Lcd.drawFastHLine(BUTTON_AREA_MARGIN, BUTTON_AREA_Y, 310, TFT_WHITE);        // ボタンエリアの区切り線
 
     int y = 220;
