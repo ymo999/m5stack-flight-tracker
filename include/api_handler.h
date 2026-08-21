@@ -23,6 +23,17 @@
 bool fetchFlightsRaw(String& responsePayload);
 
 /**
+ * @brief AirLabsのpingエンドポイントを使い、APIキーの有効性を検証する
+ *
+ * レスポンスのresponseフィールドが"pong"かどうかのみで判定する（HTTPステータスコードは見ない）
+ *
+ * @param[in] apiKey 検証対象のAPIキー
+ * @return true 有効なAPIキー
+ * @return false 無効、または通信失敗
+ */
+bool validateApiKey(const String& apiKey);
+
+/**
  * @brief APIの生JSONレスポンスをパースし、FlightData配列に格納する
  * 
  * 基準地点からの距離順（近い順）に、最大MAX_FLIGHT_COUNT件を保持する（超過分は遠い機体から捨てる）

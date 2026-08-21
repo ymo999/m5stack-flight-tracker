@@ -8,11 +8,11 @@
 #include "error_data.h"                 // テストコード用（エラー画面確認用）
 #include "flight_data.h"
 #include "input_handler.h"
-#include "secrets.h"                    // テストコード用（AIRLABS_API_KEY）※Git管理外
 #include "state_machine.h"
 #include "storage_handler.h"
 #include "system_status.h"              // 物理ボタンを持たない機種にチャタリング防止措置を適用させるため
 #include "ui_handler.h"                 // テストコード用（最終更新日時整形）
+#include "web_handler.h"
 #include "wifi_handler.h"
 
 void setup() {
@@ -23,13 +23,13 @@ void setup() {
     // ===== 調査用一時コード（ここから） =====
     // USB CDC接続の確立を待つための待機
     // モニターが安定接続する前のログ欠落を防ぐための調査用処置
-    // USB未接続時にはMAXの3秒待機してしまうため、デバッグ時以外はコメントアウトすること
+    // USB未接続時にはMAX秒数待機してしまうため、デバッグ時以外はコメントアウトすること
 
     // ミリ秒単位で時間を測定
     uint32_t serialWaitStartTime = millis();
     
-    // 「シリアル未準備」かつ「開始から3秒以内」の間ループする
-    while (!Serial && (millis() - serialWaitStartTime < 3000)) {
+    // 「シリアル未準備」かつ「開始から指定秒数以内」の間ループする
+    while (!Serial && (millis() - serialWaitStartTime < 5000)) {
         delay(100);                         // 接続を待つ
     }
     // ===== 調査用一時コード（ここまで） =====
@@ -95,19 +95,14 @@ void setup() {
     }
 
     // ★★★一時テストコード↓ここから
-    // ※APIキー・基準地点の登録状況による起動時分岐は8.2-Dで実装予定のため、暫定的に
-    // 　ここでAPIキー・基準地点を仮登録し、機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる
-    // ※initStateMachine()はWi-Fi接続成功時にcurrentModeを変更しないため、このブロック内で
-    // 　必ずcurrentModeを設定すること（設定しないとMODE_WIFI_SETUPのまま残り、
-    // 　意図せず接続失敗画面が描画される）
+    // ※基準地点の登録状況による起動時分岐の実装完了まで、暫定的に
+    // 　ここで基準地点を仮登録し、機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる
+    // ※initStateMachine()はWi-Fi接続成功時にcurrentModeを変更しないため、
+    //   このブロック内で必ずcurrentModeを設定すること
+    //  （設定しないとMODE_WIFI_SETUPのまま残り意図せず接続失敗画面が描画される）
     // ※Wi-Fi未接続時はinitStateMachine()が既にMODE_WIFI_SETUPを設定しているため、
     // 　このブロック全体を実行しない（実行するとその判定結果を上書きしてしまう）
     if (isWiFiConnected()) {
-
-        // APIキーの設定（実装までの代替措置）
-        saveApiKey(AIRLABS_API_KEY);
-        // saveApiKey("apikeytest1234567890");                     // APIリクエストエラー検証用 ※値書き換え不要
-        Serial.println("[STORAGE] API key saved");
 
         // 基準地点の設定（実装までの代替措置）
         ConfigData config;
@@ -172,6 +167,10 @@ void loop() {
 
     if (isApModeActive()) {
         handleCaptivePortal();
+    }
+
+    if (isConfigServerActive()) {
+        server.handleClient();
     }
 
     updateStateMachine();

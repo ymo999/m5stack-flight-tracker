@@ -13,6 +13,7 @@
 #include "input_handler.h"
 #include "storage_handler.h"                // 現在の設定値（APIリクエスト残数など）取得や、設定値消去を行うため
 #include "ui_handler.h"
+#include "web_handler.h"                    // APIキー・基準地点登録誘導ページの起動
 #include "wifi_handler.h"                   // データ取得中（MODE_LOADING）でのWi-Fi接続・切断
 
 // 現在の画面状態の実体
@@ -35,6 +36,10 @@ WiFiSetupPhase wifiSetupPhase = WIFI_PHASE_NONE;
 // AP接続案内画面の遷移元の実体
 // MODE_WIFI_SETUP以外の状態では意味を持たないため、初期値はWIFI_CALLER_NONEとする
 WiFiSetupCaller wifiSetupCaller = WIFI_CALLER_NONE;
+
+// QRコード誘導画面の対象種別の実体
+// MODE_QR_VIEW以外の状態では意味を持たないため、初期値はQR_TARGET_NONEとする
+QrTarget qrTarget = QR_TARGET_NONE;
 
 // 画面の再描画が必要かどうかを示すフラグの実体
 // 起動直後は必ず1回描画するため、初期値はtrueとする
@@ -222,8 +227,8 @@ void handleMenuView() {
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
-    // // デバッグ用
-    // int targetOrCaller = 0;
+    // // デバッグ用変数
+    int targetOrCaller = 0;
 
     if (btnAWasPressed()) {
         // BACK：遷移元に応じて戻り先を分岐
@@ -261,12 +266,15 @@ void handleMenuView() {
                 /* TODO : 基準地点設定への遷移（手順25以降で実装） */
                 break;
             case SETTINGS_ITEM_API_KEY:
-                /* TODO : APIキー設定への遷移（手順25以降で実装） */
+                // APIキー設定画面へ（設定用Webサーバーをstationモードで起動）
+                qrTarget = QR_TARGET_API_KEY;
+                startConfigServer();
+                currentMode = MODE_QR_VIEW;
                 break;
             case SETTINGS_ITEM_WIFI:
                 currentMode = MODE_CONFIRM_DIALOG;
                 currentConfirm = CONFIRM_WIFI_SETTINGS;
-                // targetOrCaller = currentConfirm;
+                targetOrCaller = currentConfirm;
                 break;
             case SETTINGS_ITEM_SCAN_RANGE:
                 resetScanRangeCursor();
@@ -278,7 +286,7 @@ void handleMenuView() {
             case SETTINGS_ITEM_RESET_ALL:
                 currentMode = MODE_CONFIRM_DIALOG;
                 currentConfirm = CONFIRM_RESET;
-                // targetOrCaller = currentConfirm;
+                targetOrCaller = currentConfirm;
                 break;
         }
         needsRedraw = true;
@@ -368,7 +376,32 @@ void handleScanRangeView() {
 
 // QRコード誘導（APIキー／基準地点）
 void handleQrView() {
-    /* TODO : 処理内容の記述（QRコード誘導画面の描画・ボタン処理、5.2・5.8参照） */
+    // ------------------------------------------------------
+    // ボタン処理（毎回実行）
+    // ------------------------------------------------------
+    if (btnAWasPressed()) {
+        // BACK：設定用Webサーバーを停止し、設定メニュー画面へ戻る
+        stopConfigServer();
+        qrTarget = QR_TARGET_NONE;
+        currentMode = MODE_MENU_VIEW;
+        needsRedraw = true;
+        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 描画処理（needsRedrawがtrueの時のみ実行）
+    // qrTargetに応じて表示内容を出し分ける
+    // ------------------------------------------------------
+    if (needsRedraw) {
+        if (qrTarget == QR_TARGET_API_KEY) {
+            drawSetupQRScreen("API KEY SETUP", "/api_key", nullptr,
+                              "Waiting for input...", "BACK");
+        }
+        // QR_TARGET_LOCATIONの分岐は手順28で追加
+        needsRedraw = false;
+        // Serial.println("[VIEW] QR VIEW redraw");
+    }
 }
 
 // 確認ダイアログ

@@ -16,6 +16,9 @@
 // AirLabs APIのベースURL
 static const char* API_BASE_URL = "https://airlabs.co/api/v9/flights";
 
+// AirLabs APIのpingエンドポイント（APIキー検証用）
+static const char* PING_BASE_URL = "https://airlabs.co/api/v9/ping";
+
 // SCAN RANGEに対応するマージン（度）
 static const double MARGIN_NARROW = 0.5;
 static const double MARGIN_WIDE   = 2.0;
@@ -78,6 +81,46 @@ bool fetchFlightsRaw(String& responsePayload) {
 
     http.end();
     return success;
+}
+
+// ============================================================
+// AirLabsのpingエンドポイントを使い、APIキーの有効性を検証する
+// ============================================================
+bool validateApiKey(const String& apiKey) {
+    String url = String(PING_BASE_URL) + "?api_key=" + apiKey;
+
+    // ------------------------------------------------------
+    // HTTPSリクエストを送信する
+    // ※証明書検証はスキップする（fetchFlightsRaw()と同じ理由・同じ方針）
+    // ------------------------------------------------------
+    WiFiClientSecure client;
+    client.setInsecure();
+
+    HTTPClient http;
+    http.begin(client, url);
+    int httpCode = http.GET();
+
+    // 通信自体が失敗した場合（httpCode <= 0）は無効として扱う
+    if (httpCode <= 0) {
+        http.end();
+        return false;
+    }
+
+    String payload = http.getString();
+    http.end();
+
+    // ------------------------------------------------------
+    // response.responseが"pong"かどうかのみで判定する
+    // HTTPステータスコードには依存しない（AirLabsはエラー時も200を返すことがあるため）
+    // ------------------------------------------------------
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, payload);
+    if (error) {
+        return false;
+    }
+
+    const char* responseValue = doc["response"] | "";
+    return strcmp(responseValue, "pong") == 0;
 }
 
 // ============================================================

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<!--
+filename : api_key_error.html
+description : APIキー設定エラーページ - API Key Setup Error Page
+created : 2026-08-21
+-->
+<html lang="ja">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>APIキー設定</title>
+</head>
+<body>
+	<h1>エラー</h1>
+	<p>APIキーが無効です。内容をご確認のうえ、もう一度お試しください</p>
+	<form action="/api_key" method="POST">
+		<input type="text" name="apikey" placeholder="APIキー" required>
+		<button type="submit">再試行</button>
+	</form>
+</body>
+</html>

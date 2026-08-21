@@ -12,6 +12,11 @@
 #include "storage_handler.h"
 #include "ui_handler.h"                                 // 再起動予告画面の描画のため
 #include "wifi_handler.h"
+#include "api_handler.h"                                // validateApiKey()でAPIキーの有効性を検証するため
+
+// 設定用Webサーバー（stationモード）が起動中かどうかを示すフラグの実体
+// apModeActiveと同じパターンで管理する
+bool configServerActive = false;
 
 // ============================================================
 // 初回設定ページの配信（GET "/"）
@@ -45,13 +50,13 @@ void handleSave() {
     // ------------------------------------------------------
     // 2. 接続方式・静的IP項目の受信
     // ------------------------------------------------------
-    String connType = server.arg("connType");           // "dhcp" または "static"
+    String connType = server.arg("connType");               // "dhcp" または "static"
     bool useStaticIp = (connType == "static");
 
     String ipStr = server.arg("ip");
     String gatewayStr = server.arg("gateway");
     String subnetStr = server.arg("subnet");
-    String dnsStr = server.arg("dns");                   // 空欄可（Gatewayを流用）
+    String dnsStr = server.arg("dns");                      // 空欄可（Gatewayを流用）
 
     // ------------------------------------------------------
     // 3. 静的IP選択時のみ、サーバー側バリデーションを実施
@@ -112,4 +117,74 @@ void handleSave() {
     drawLoadingScreen("Restarting in 3 seconds");
     delay(3000);                                        // レスポンス送信の完了を待つ（送信途中での切断を防ぐ）
     ESP.restart();
+}
+
+// ============================================================
+// 設定用Webサーバー（stationモード）の起動
+// ============================================================
+void startConfigServer() {
+    server.on("/api_key", HTTP_GET, handleApiKeyPage);
+    server.on("/api_key", HTTP_POST, handleApiKeySave);
+    // 基準地点設定ページ（"/location"）のルートは手順28で追加する
+
+    server.begin();
+    configServerActive = true;
+}
+
+// ============================================================
+// 設定用Webサーバー（stationモード）の停止
+// ============================================================
+void stopConfigServer() {
+    server.stop();
+    configServerActive = false;
+}
+
+bool isConfigServerActive() {
+    return configServerActive;
+}
+
+// ------------------------------------------------------
+// LittleFS上のHTMLファイルをストリーム配信する共通処理
+// handleApiKeyPage()・handleApiKeySave()の両方から使用する
+// ------------------------------------------------------
+static void streamHtmlFile(const char* path) {
+    File file = LittleFS.open(path, "r");
+    if (!file) {
+        server.send(500, "text/plain", "Failed to load page");
+        return;
+    }
+    server.streamFile(file, "text/html");
+    file.close();
+}
+
+// ============================================================
+// APIキー設定ページの配信（GET "/api_key"）
+// ============================================================
+void handleApiKeyPage() {
+    streamHtmlFile("/api_key.html");
+}
+
+// ============================================================
+// APIキーの受信・ping検証・保存（POST "/api_key"）
+// ============================================================
+void handleApiKeySave() {
+    // ------------------------------------------------------
+    // 1. 必須項目（ユーザーが登録したAPIキー）の受信・チェック
+    // ------------------------------------------------------
+    String apiKey = server.arg("apikey");
+
+    if (apiKey.length() == 0) {
+        server.send(400, "text/plain", "API key is required.");
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 2. ping検証（有効な場合のみNVSへ保存）
+    // ------------------------------------------------------
+    if (validateApiKey(apiKey)) {
+        saveApiKey(apiKey);
+        streamHtmlFile("/api_key_success.html");
+    } else {
+        streamHtmlFile("/api_key_error.html");
+    }
 }

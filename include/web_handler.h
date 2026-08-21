@@ -20,4 +20,44 @@ void handleSetupPage();
  */
 void handleSave();
 
+// ------------------------------------------------------
+// 設定用Webサーバー（stationモード）― APIキー設定ページ
+// ------------------------------------------------------
+
+/**
+ * @brief 設定用Webサーバー（stationモード）を起動する
+ *
+ * APIキー設定ページ（"/api_key"）のGET/POSTルートを登録し、server.begin()する
+ *
+ * @note 基準地点設定ページ（"/location"）のルートは手順28で追加する
+ * @note APモード用のenterAPMode()とは、同じserverインスタンスを別タイミングで
+ *       使い分ける関係にある（station接続中はAPモードではないため、同時起動はしない前提）
+ */
+void startConfigServer();
+
+/**
+ * @brief 設定用Webサーバー（stationモード）を停止する
+ */
+void stopConfigServer();
+
+/**
+ * @brief 設定用Webサーバーが起動中かどうかを返す
+ *
+ * @note apModeActive/isApModeActive()と同じパターン
+ */
+bool isConfigServerActive();
+
+/**
+ * @brief APIキー設定ページ（api_key.html）を配信する（GET "/api_key"）
+ */
+void handleApiKeyPage();
+
+/**
+ * @brief APIキー送信を受信し、ping検証後にNVSへ保存する（POST "/api_key"）
+ *
+ * @note 検証結果に応じたHTMLページ（成功／失敗）を直接レスポンスとして返す
+ * @note validateApiKey()はapi_handler.h/.cppに実装
+ */
+void handleApiKeySave();
+
 #endif

@@ -215,4 +215,26 @@ enum ConfirmTarget {
  */
 extern ConfirmTarget currentConfirm;
 
+// ------------------------------------------------------
+// QRコード誘導画面専用（MODE_QR_VIEW）
+// ------------------------------------------------------
+
+/**
+ * @brief QRコード誘導画面の対象種別（APIキー／基準地点）
+ *
+ * WiFiSetupCallerと同じ考え方を踏襲する
+ */
+enum QrTarget {
+    QR_TARGET_NONE,                         ///< MODE_QR_VIEW以外の状態では意味を持たない
+    QR_TARGET_API_KEY,                      ///< APIキー設定
+    QR_TARGET_LOCATION                      ///< 基準地点設定
+};
+
+/**
+ * @brief state_machine.cpp で定義されている、QRコード誘導画面の対象種別を共有する
+ *
+ * @note MODE_QR_VIEW以外の状態では意味を持たない（QR_TARGET_NONEを想定）
+ */
+extern QrTarget qrTarget;
+
 #endif
