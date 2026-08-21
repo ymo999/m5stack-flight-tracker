@@ -48,6 +48,16 @@ void stopConfigServer();
 bool isConfigServerActive();
 
 /**
+ * @brief APIキー・基準地点いずれかの保存が成功したかどうかを示すフラグを共有する
+ *
+ * @note QRコード誘導画面（MODE_QR_VIEW）で、保存完了を検知して自動的にSETTINGSへ
+ *       戻るために使用する
+ * @note APIキー専用にせず汎用の名前にしているのは、基準地点でも
+ *       同じ仕組みを再利用する想定のため
+ */
+extern bool qrSetupCompleted;
+
+/**
  * @brief APIキー設定ページ（api_key.html）を配信する（GET "/api_key"）
  */
 void handleApiKeyPage();

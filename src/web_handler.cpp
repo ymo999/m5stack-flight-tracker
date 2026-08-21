@@ -18,6 +18,10 @@
 // apModeActiveと同じパターンで管理する
 bool configServerActive = false;
 
+// APIキー・基準地点いずれかの保存が成功したかどうかを示すフラグの実体
+// MODE_QR_VIEW以外の状態では意味を持たない
+bool qrSetupCompleted = false;
+
 // ============================================================
 // 初回設定ページの配信（GET "/"）
 // ============================================================
@@ -183,6 +187,7 @@ void handleApiKeySave() {
     // ------------------------------------------------------
     if (validateApiKey(apiKey)) {
         saveApiKey(apiKey);
+        qrSetupCompleted = true;
         streamHtmlFile("/api_key_success.html");
     } else {
         streamHtmlFile("/api_key_error.html");

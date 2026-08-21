@@ -268,6 +268,7 @@ void handleMenuView() {
             case SETTINGS_ITEM_API_KEY:
                 // APIキー設定画面へ（設定用Webサーバーをstationモードで起動）
                 qrTarget = QR_TARGET_API_KEY;
+                qrSetupCompleted = false;                   // 登録成否フラグの初期化（登録成功後の画面遷移判定用）
                 startConfigServer();
                 currentMode = MODE_QR_VIEW;
                 break;
@@ -376,6 +377,21 @@ void handleScanRangeView() {
 
 // QRコード誘導（APIキー／基準地点）
 void handleQrView() {
+    // ------------------------------------------------------
+    // 保存完了検知（毎回実行）
+    // 設定用Webページ側で保存が成功すると、qrSetupCompletedがtrueになる
+    // BACKボタン押下時と同じ後処理を行い、SETTINGSへ自動遷移する
+    // ------------------------------------------------------
+    if (qrSetupCompleted) {
+        stopConfigServer();
+        qrTarget = QR_TARGET_NONE;
+        qrSetupCompleted = false;
+        currentMode = MODE_MENU_VIEW;
+        needsRedraw = true;
+        // Serial.println("[QR] Setup completed. Auto-transition to SETTINGS.");
+        return;
+    }
+
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
