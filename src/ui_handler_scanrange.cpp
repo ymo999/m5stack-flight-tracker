@@ -24,11 +24,9 @@ void drawScanRangeView() {
     initScreenDrawing();
 
     // ------------------------------------------------------
-    // タイトル（中央揃え）
+    // タイトル
     // ------------------------------------------------------
-    M5.Lcd.setTextDatum(top_center);
-    M5.Lcd.drawString("SCAN RANGE", 160, 8);
-    M5.Lcd.setTextDatum(top_left);
+    drawTitle("SCAN RANGE");
 
     // ------------------------------------------------------
     // 外枠

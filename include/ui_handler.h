@@ -101,6 +101,13 @@ void drawOuterFrame();
 void drawOuterFrameWithTitle();
 
 /**
+ * @brief タイトル（中央揃え）を描画する
+ * 
+ * @param[in] title タイトルのラベル
+ */
+void drawTitle(const char* title);
+
+/**
  * @brief 3つのボタンラベルを描画する
  *
  * @param[in] labelA 左ボタンのラベル（nullptrの場合は描画しない）
@@ -211,5 +218,19 @@ void drawLoadingScreen(const char* message);
  * @note データ再取得時の接続失敗時のWi-Fi設定関連の接続失敗画面（drawWiFiSetupFailed）とは、レイアウト・文言が異なる別画面
  */
 void drawConnectionFailedView();
+
+/**
+ * @brief 設定画面へのQRコード誘導画面（APIキー設定／基準地点設定）を描画する
+ *
+ * @note タイトル以外は左揃え（x=18）で描画する（drawWiFiSetupGuide()と同じ方針）
+ *
+ * @param[in] title       画面タイトル（"API KEY SETUP" 等）
+ * @param[in] path        設定ページのパス（"/api_key" や "/location"）
+ * @param[in] extraInfo   現在の設定値等（不要な場合は nullptr）
+ * @param[in] statusMsg   待機中等のステータスメッセージ（不要な場合は nullptr）
+ * @param[in] buttonLabel BACKラベル（nullptr ならボタン非表示）
+ */
+void drawSetupQRScreen(const char* title, const char* path, const char* extraInfo,
+                        const char* statusMsg, const char* buttonLabel);
 
 #endif

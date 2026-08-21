@@ -18,11 +18,9 @@ void drawWiFiSetupGuide() {
     initScreenDrawing();
 
     // ------------------------------------------------------
-    // タイトル（中央揃え）
+    // タイトル
     // ------------------------------------------------------
-    M5.Lcd.setTextDatum(top_center);
-    M5.Lcd.drawString("Wi-Fi SETUP", 160, 8);
-    M5.Lcd.setTextDatum(top_left);
+    drawTitle("Wi-Fi SETUP");
 
     // ------------------------------------------------------
     // 外枠
@@ -80,11 +78,9 @@ void drawWiFiSetupFailed() {
     initScreenDrawing();
 
     // ------------------------------------------------------
-    // タイトル（中央揃え）
+    // タイトル
     // ------------------------------------------------------
-    M5.Lcd.setTextDatum(top_center);
-    M5.Lcd.drawString("Wi-Fi SETUP", 160, 8);
-    M5.Lcd.setTextDatum(top_left);
+    drawTitle("Wi-Fi SETUP");
 
     // ------------------------------------------------------
     // 外枠

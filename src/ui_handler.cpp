@@ -103,6 +103,16 @@ void drawOuterFrameWithTitle() {
 }
 
 // ============================================================
+// タイトルを描画する
+// ============================================================
+void drawTitle(const char* title) {
+    M5.Lcd.setTextDatum(top_center);
+    M5.Lcd.setTextSize(2);
+    M5.Lcd.drawString(title, 160, 8);
+    M5.Lcd.setTextDatum(top_left);                      // 左揃え描画に戻す
+}
+
+// ============================================================
 // 3つのボタンラベルを描画する
 // ============================================================
 void drawButtonLabels(const char* labelA, const char* labelB, const char* labelC) {

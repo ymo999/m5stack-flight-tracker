@@ -19,11 +19,9 @@ void drawErrorView(const char* message, const char* code) {
     initScreenDrawing();
 
     // ------------------------------------------------------
-    // タイトル（中央揃え）
+    // タイトル
     // ------------------------------------------------------
-    M5.Lcd.setTextDatum(top_center);
-    M5.Lcd.drawString("ERROR", 160, 8);
-    M5.Lcd.setTextDatum(top_left);
+    drawTitle("ERROR");
 
     // ------------------------------------------------------
     // 上側の区切り線（外枠は使用しない。messageの折り返しが枠線を越えるため）

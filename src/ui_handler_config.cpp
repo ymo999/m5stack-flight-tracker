@@ -5,7 +5,7 @@
 
 #include "ui_handler.h"                         // M5Unified.hはこの中でインクルード済
 
-#include <WiFi.h>
+#include <WiFi.h>                               // WiFi.localIP() と WiFi.macAddress() を使用するため
 
 #include "storage_handler.h"
 
@@ -18,11 +18,9 @@ void drawConfigView() {
     initScreenDrawing();
 
     // ------------------------------------------------------
-    // タイトル（中央揃え、size(2)のまま）
+    // タイトル
     // ------------------------------------------------------
-    M5.Lcd.setTextDatum(top_center);
-    M5.Lcd.drawString("CONFIG", 160, 8);
-    M5.Lcd.setTextDatum(top_left);
+    drawTitle("CONFIG");
 
     // ------------------------------------------------------
     // 外枠
