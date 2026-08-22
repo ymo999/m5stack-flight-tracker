@@ -1,6 +1,8 @@
 /**
  * @file airline_dict.h
  * @brief 航空会社辞書（ICAOコード→名称変換）の宣言
+ *
+ * データ出典・ライセンスについては airline_dict.cpp の先頭コメントを参照。
  */
 
 #ifndef AIRLINE_DICT_H                  // インクルードガード（二重定義防止）
