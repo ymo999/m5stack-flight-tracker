@@ -1,6 +1,7 @@
 # M5Stack 航空機スキャンシステム
 
 ![Platform](https://img.shields.io/badge/platform-M5Stack%20Basic-000000)
+![Platform](https://img.shields.io/badge/platform-M5Stack%20CoreS3-000000)
 ![Language](https://img.shields.io/badge/language-C%2B%2B-00599C)
 ![Framework](https://img.shields.io/badge/framework-Arduino-00979D)
 ![Build](https://img.shields.io/badge/build-PlatformIO-FF7F00)
@@ -43,7 +44,7 @@ M5Stack（ESP32）を使用し、指定した地点の周辺を飛行中の航�
 | 対象デバイス | M5Stack Basic |
 | 開発環境 | VS Code + PlatformIO |
 | フレームワーク | Arduino |
-| 主要ライブラリ | M5Unified, ArduinoJson, TinyGPSPlus |
+| 主要ライブラリ | M5Unified, ArduinoJson |
 
 ---
 
@@ -104,6 +105,16 @@ AIの助言はあくまで参考情報であり、実機での動作確認・最
 ## ライセンス
 
 未定（個人開発プロジェクトのため、現時点では非公開/検討中）
+
+---
+## データ出典およびライセンスについて
+
+本アプリのデータベースに登録されている航空会社コード（IATA/ICAOコード）は、以下の公的機関・業界団体が公開している「客観的な事実データ」を手動で集計・検証したものです。
+
+- 日本国内データ: [国土交通省 航空局 航空会社コード一覧](https://www.mlit.go.jp/koku/content/001514113.xlsx)
+- 国際データ: [IATA（International Air Transport Association）加盟会社一覧](https://www.iata.org/en/about/members/airline-list/) からの事実データの引用
+
+※本アプリは上記機関に対する自動スクレイピング等、利用規約に反する行為は行っておりません。また、公式のサービスではないため、データの正確性を保証するものではありません。
 
 ---
 
