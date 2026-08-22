@@ -310,6 +310,12 @@ void handleMenuView() {
                 currentMode = MODE_SCAN_RANGE_VIEW;
                 break;
             case SETTINGS_ITEM_SHOW_CONFIG:
+                // CONFIG画面へ（IPアドレス表示のため、事前に一度だけWi-Fi接続を試みる）
+                // 接続に失敗しても専用のエラー処理は行わず、そのままCONFIG画面へ進む
+                // （表示側でIP未取得＝未接続として扱う。drawConfigView()参照）
+                drawLoadingScreen("Connecting to Wi-Fi...");
+                enableWiFi();
+                tryConnectWiFi();
                 currentMode = MODE_CONFIG_VIEW;
                 break;
             case SETTINGS_ITEM_RESET_ALL:
@@ -339,7 +345,8 @@ void handleConfigView() {
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
     if (btnAWasPressed()) {
-        // BACK：設定メニュー画面へ戻る
+        // BACK：設定メニュー画面へ戻る（IPアドレス表示のために接続したWi-Fiを切断する）
+        disableWiFi();
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
         Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);

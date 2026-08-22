@@ -79,9 +79,15 @@ void drawConfigView() {
     M5.Lcd.setCursor(80, 95);
     M5.Lcd.print(ssid);
 
+    // IPアドレス：接続失敗時は0.0.0.0となるため、未接続を示す文言に置き換える
     M5.Lcd.setCursor(80, 111);
-    M5.Lcd.print(WiFi.localIP().toString());
-
+    IPAddress currentIp = WiFi.localIP();
+    if (currentIp == IPAddress(0, 0, 0, 0)) {
+        M5.Lcd.print("Not connected");
+    } else {
+        M5.Lcd.print(currentIp.toString());
+    }
+    
     M5.Lcd.setCursor(80, 127);
     M5.Lcd.print(WiFi.macAddress());
 
