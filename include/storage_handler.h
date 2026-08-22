@@ -10,6 +10,10 @@
 
 #include "flight_data.h"            // FlightData構造体
 
+// 基準地点未登録を表すセンチネル値
+// 緯度は-90〜90、経度は-180〜180の範囲外のため、実在する座標と衝突しない
+#define LOCATION_UNSET 9999.0
+
 /**
  * @brief ネットワーク設定・取得地点・SCAN RANGEをまとめた構造体（config.json対応）
  */

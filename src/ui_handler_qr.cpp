@@ -39,16 +39,6 @@ void drawSetupQRScreen(const char* title, const char* path, const char* extraInf
     M5.Lcd.qrcode(url.c_str(), 105, 40, 110, 3);
 
     // ------------------------------------------------------
-    // 現在の設定値（基準地点設定の場合のみ。左揃え）
-    // ------------------------------------------------------
-    if (extraInfo != nullptr) {
-        M5.Lcd.setTextSize(2);
-        M5.Lcd.setTextColor(TFT_WHITE);
-        M5.Lcd.setCursor(18, 142);
-        M5.Lcd.print(extraInfo);
-    }
-
-    // ------------------------------------------------------
     // ステータスメッセージ（黄色・左揃え）
     // ------------------------------------------------------
     if (statusMsg != nullptr) {
@@ -72,6 +62,16 @@ void drawSetupQRScreen(const char* title, const char* path, const char* extraInf
     M5.Lcd.setTextSize(1);                          // 画面に収まらなくなるためフォントサイズ変更
     M5.Lcd.setCursor(18, 180);
     M5.Lcd.print(url);
+
+    // ------------------------------------------------------
+    // 現在の設定値（基準地点設定の場合のみ）
+    // ------------------------------------------------------
+    if (extraInfo != nullptr) {
+        M5.Lcd.setTextSize(1);
+        M5.Lcd.setTextColor(TFT_WHITE);
+        M5.Lcd.setCursor(18, 192);
+        M5.Lcd.print(extraInfo);
+    }
 
     // ------------------------------------------------------
     // ボタンラベル・区切り線（nullptr なら非表示）

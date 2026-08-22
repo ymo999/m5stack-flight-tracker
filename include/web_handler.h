@@ -70,4 +70,26 @@ void handleApiKeyPage();
  */
 void handleApiKeySave();
 
+/**
+ * @brief 登録済みの基準地点をJSON形式で返す（GET "/location_current"）
+ *
+ * @note location.htmlが初期表示地点（東京駅／登録済みの値）を判定するために使用する
+ * @note 未登録の場合はLOCATION_UNSET（storage_handler.h参照）がそのまま返る
+ */
+void handleLocationCurrent();
+
+/**
+ * @brief 基準地点設定ページ（location.html）を配信する（GET "/location"）
+ */
+void handleLocationPage();
+
+/**
+ * @brief 基準地点の受信・バリデーション・保存を行う（GET "/set"）
+ *
+ * @note 緯度は-90〜90、経度は-180〜180の範囲外の場合は失敗として扱う
+ *       （この範囲チェックにより、センチネル値LOCATION_UNSET(9999)も自動的に弾かれる）
+ * @note 検証結果に応じたHTMLページ（成功／失敗）を直接レスポンスとして返す
+ */
+void handleLocationSave();
+
 #endif

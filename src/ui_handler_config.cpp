@@ -7,7 +7,7 @@
 
 #include <WiFi.h>                               // WiFi.localIP() と WiFi.macAddress() を使用するため
 
-#include "storage_handler.h"
+#include "storage_handler.h"                    // 設定値取得のため
 
 // ============================================================
 // 設定内容一覧画面（CONFIG）を描画する
@@ -51,7 +51,13 @@ void drawConfigView() {
     M5.Lcd.setCursor(12, 41);
     M5.Lcd.print("LOCATION");
     // sprintf不使用（vfprintf系の実装がリンクされフラッシュ容量を圧迫するため、Stringクラスの機能で代替）
-    String locStr = String(config.lat, 3) + " , " + String(config.lng, 3);
+    // 未登録（LOCATION_UNSET）の場合は座標をそのまま表示せず「Not set」と表示する
+    String locStr;
+    if (config.lat == LOCATION_UNSET || config.lng == LOCATION_UNSET) {
+        locStr = "Not set";
+    } else {
+        locStr = String(config.lat, 3) + " , " + String(config.lng, 3);
+    }
     M5.Lcd.setCursor(80, 41);
     M5.Lcd.print(locStr);
 

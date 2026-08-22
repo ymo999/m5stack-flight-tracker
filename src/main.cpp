@@ -116,12 +116,12 @@ void setup() {
         // 基準地点の設定（実装までの代替措置）
         ConfigData config;
         loadConfig(config);
-        config.lat = 35.68037286903755;              // 東京駅の緯度（テスト用）
-        config.lng = 139.76687900640945;             // 東京駅の経度（テスト用）
+        config.lat = 35.681236;                     // 東京駅の緯度（テスト用）
+        config.lng = 139.767125;                    // 東京駅の経度（テスト用）
         // config.lat = 0;                              // ヌル島の緯度（機体0件テスト用）
         // config.lng = 0;                              // ヌル島の経度（機体0件テスト用）
         saveConfig(config);
-        Serial.println("[STORAGE] Base Point saved");
+        Serial.println("[LOCATION] Base Point saved");
 
         // 最終更新日時の取得と整形
         struct tm timeInfo;

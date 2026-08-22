@@ -184,7 +184,7 @@ void handleFlightView() {
             currentDisplayIndex = totalFlightCount - 1;
         }
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnA wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
+        Serial.printf("[BTN] BtnA wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
         return;
     }
 
@@ -193,10 +193,10 @@ void handleFlightView() {
         if (currentDisplayIndex >= totalFlightCount - 1) {
             currentMode = MODE_CONFIRM_DIALOG;
             currentConfirm = CONFIRM_REFRESH;
-            // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d, currentConfirm = %d\n", currentMode, currentConfirm);
+            Serial.printf("[BTN] BtnB wasPressed. currentMode = %d, currentConfirm = %d\n", currentMode, currentConfirm);
         } else {
             currentDisplayIndex++;
-            // Serial.printf("[BTN] BtnB wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
+            Serial.printf("[BTN] BtnB wasPressed. currentDisplayIndex = %d\n", currentDisplayIndex);
         }
         needsRedraw = true;
         return;
@@ -208,7 +208,7 @@ void handleFlightView() {
         currentMode = MODE_MENU_VIEW;
         cursorIndex = 0;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -218,7 +218,7 @@ void handleFlightView() {
     if (needsRedraw) {
         drawFlightView();
         needsRedraw = false;
-        // Serial.println("[VIEW] FLIGHT VIEW redraw");
+        Serial.println("[VIEW] FLIGHT VIEW redraw");
     }
 }
 
@@ -244,7 +244,7 @@ void handleMenuView() {
                 break;
         }
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -255,23 +255,51 @@ void handleMenuView() {
             cursorIndex = 0;
         }
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnB wasPressed. cursorIndex = %d\n", cursorIndex);
+        Serial.printf("[BTN] BtnB wasPressed. cursorIndex = %d\n", cursorIndex);
         return;
     }
 
     if (btnCWasPressed()) {        
         // SELECT：選択中の項目に応じた画面遷移
         switch ((SettingsItemIndex)cursorIndex) {
-            case SETTINGS_ITEM_LOCATION:
-                /* TODO : 基準地点設定への遷移（手順25以降で実装） */
+            case SETTINGS_ITEM_LOCATION: {
+                // 基準地点設定画面へ（QRコードのURLにIPアドレスが必要なため、遷移前にWi-Fi接続を確認する）
+                drawLoadingScreen("Connecting to Wi-Fi...");
+                enableWiFi();
+
+                if (tryConnectWiFi()) {
+                    qrTarget = QR_TARGET_LOCATION;
+                    qrSetupCompleted = false;               // 登録成否フラグの初期化（登録成功後の画面遷移判定用）
+                    startConfigServer();
+                    currentMode = MODE_QR_VIEW;
+                } else {
+                    // 接続失敗：短いメッセージを表示した後、SETTINGSへ自動的に戻す
+                    disableWiFi();
+                    drawLoadingScreen("Connection failed");
+                    delay(1500);
+                    currentMode = MODE_MENU_VIEW;
+                }
                 break;
-            case SETTINGS_ITEM_API_KEY:
-                // APIキー設定画面へ（設定用Webサーバーをstationモードで起動）
-                qrTarget = QR_TARGET_API_KEY;
-                qrSetupCompleted = false;                   // 登録成否フラグの初期化（登録成功後の画面遷移判定用）
-                startConfigServer();
-                currentMode = MODE_QR_VIEW;
+            }
+            case SETTINGS_ITEM_API_KEY: {
+                // APIキー設定画面へ（QRコードのURLにIPアドレスが必要なため、遷移前にWi-Fi接続を確認する）
+                drawLoadingScreen("Connecting to Wi-Fi...");
+                enableWiFi();
+
+                if (tryConnectWiFi()) {
+                    qrTarget = QR_TARGET_API_KEY;
+                    qrSetupCompleted = false;               // 登録成否フラグの初期化（登録成功後の画面遷移判定用）
+                    startConfigServer();
+                    currentMode = MODE_QR_VIEW;
+                } else {
+                    // 接続失敗：短いメッセージを表示した後、SETTINGSへ自動的に戻す
+                    disableWiFi();
+                    drawLoadingScreen("Connection failed");
+                    delay(1500);
+                    currentMode = MODE_MENU_VIEW;
+                }
                 break;
+            }
             case SETTINGS_ITEM_WIFI:
                 currentMode = MODE_CONFIRM_DIALOG;
                 currentConfirm = CONFIRM_WIFI_SETTINGS;
@@ -291,7 +319,7 @@ void handleMenuView() {
                 break;
         }
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, targetOrCaller = %d\n", currentMode, targetOrCaller);
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, targetOrCaller = %d\n", currentMode, targetOrCaller);
         return;
     }
 
@@ -301,7 +329,7 @@ void handleMenuView() {
     if (needsRedraw) {
         drawSettingsView();
         needsRedraw = false;
-        // Serial.println("[VIEW] SETTINGS redraw");
+        Serial.println("[VIEW] SETTINGS redraw");
     }
 }
 
@@ -314,7 +342,7 @@ void handleConfigView() {
         // BACK：設定メニュー画面へ戻る
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -324,7 +352,7 @@ void handleConfigView() {
     if (needsRedraw) {
         drawConfigView();
         needsRedraw = false;
-        // Serial.println("[VIEW] CONFIG redraw");
+        Serial.println("[VIEW] CONFIG redraw");
     }
 }
 
@@ -337,7 +365,7 @@ void handleScanRangeView() {
         // BACK：設定メニュー画面へ戻る（範囲は変更しない）
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d, Scan range was not changed.\n", currentMode);
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d, Scan range was not changed.\n", currentMode);
         return;
     }
 
@@ -348,7 +376,7 @@ void handleScanRangeView() {
             scanRangeCursorIndex = 0;
         }
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnB wasPressed. scanRangeCursorIndex = %d\n", scanRangeCursorIndex);
+        Serial.printf("[BTN] BtnB wasPressed. scanRangeCursorIndex = %d\n", scanRangeCursorIndex);
         return;
     }
 
@@ -361,7 +389,7 @@ void handleScanRangeView() {
 
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, currentScanRange = %s\n", currentMode, config.scanRange.c_str());
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d, currentScanRange = %s\n", currentMode, config.scanRange.c_str());
         return;
     }
 
@@ -371,7 +399,7 @@ void handleScanRangeView() {
     if (needsRedraw) {
         drawScanRangeView();
         needsRedraw = false;
-        // Serial.println("[VIEW] SCAN RANGE redraw");
+        Serial.println("[VIEW] SCAN RANGE redraw");
     }
 }
 
@@ -384,11 +412,12 @@ void handleQrView() {
     // ------------------------------------------------------
     if (qrSetupCompleted) {
         stopConfigServer();
+        disableWiFi();                                  // 低消費電力運用のため、通常時はWi-Fi OFFに戻す
         qrTarget = QR_TARGET_NONE;
         qrSetupCompleted = false;
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
-        // Serial.println("[QR] Setup completed. Auto-transition to SETTINGS.");
+        Serial.println("[QR] Setup completed. Auto-transition to SETTINGS.");
         return;
     }
 
@@ -398,10 +427,11 @@ void handleQrView() {
     if (btnAWasPressed()) {
         // BACK：設定用Webサーバーを停止し、設定メニュー画面へ戻る
         stopConfigServer();
+        disableWiFi();                                  // 低消費電力運用のため、通常時はWi-Fi OFFに戻す
         qrTarget = QR_TARGET_NONE;
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -413,10 +443,25 @@ void handleQrView() {
         if (qrTarget == QR_TARGET_API_KEY) {
             drawSetupQRScreen("API KEY SETUP", "/api_key", nullptr,
                               "Waiting for input...", "BACK");
+        } else if (qrTarget == QR_TARGET_LOCATION) {
+            // 現在登録済みの基準地点を画面に表示する（未登録時はLOCATION_UNSET）
+            ConfigData config;
+            loadConfig(config);
+
+            String currentLoc;
+            if (config.lat == LOCATION_UNSET || config.lng == LOCATION_UNSET) {
+                currentLoc = "Current : Not set";
+            } else {
+                currentLoc = "Current : " + String(config.lat, 3) + ", " + String(config.lng, 3);
+            }
+
+            drawSetupQRScreen("LOCATION SETUP", "/location", currentLoc.c_str(),
+                            "Waiting for input...", "BACK");
+        } else {
+            Serial.println("[VIEW] QR target undefined");
         }
-        // QR_TARGET_LOCATIONの分岐は手順28で追加
         needsRedraw = false;
-        // Serial.println("[VIEW] QR VIEW redraw");
+        Serial.println("[VIEW] QR VIEW redraw");
     }
 }
 
@@ -442,7 +487,7 @@ void handleConfirmDialog() {
         }
         currentConfirm = CONFIRM_NONE;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -520,7 +565,7 @@ void handleConfirmDialog() {
                 break;
         }
         needsRedraw = false;
-        // Serial.printf("[VIEW] CONFIRM DIALOG redraw. currentConfirm = %d\n", currentConfirm);
+        Serial.printf("[VIEW] CONFIRM DIALOG redraw. currentConfirm = %d\n", currentConfirm);
     }
 }
 
@@ -536,7 +581,7 @@ void handleErrorView() {
             currentMode = MODE_FLIGHT_VIEW;
             needsRedraw = true;
         }
-        // Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -546,7 +591,7 @@ void handleErrorView() {
             currentMode = MODE_LOADING;
             needsRedraw = true;
         }
-        // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -558,7 +603,7 @@ void handleErrorView() {
             cursorIndex = 0;
             needsRedraw = true;
         }
-        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -568,7 +613,7 @@ void handleErrorView() {
     if (needsRedraw) {
         drawErrorView(currentError.message.c_str(), currentError.code.c_str());
         needsRedraw = false;
-        // Serial.println("[VIEW] ERROR redraw");
+        Serial.println("[VIEW] ERROR redraw");
     }
 }
 
@@ -581,7 +626,7 @@ void handleNoFlightsView() {
         // RETRY：確認ダイアログを挟まず、そのまま再取得へ
         currentMode = MODE_LOADING;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnB wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -591,7 +636,7 @@ void handleNoFlightsView() {
         currentMode = MODE_MENU_VIEW;
         cursorIndex = 0;
         needsRedraw = true;
-        // Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
+        Serial.printf("[BTN] BtnC wasPressed. currentMode = %d\n", currentMode);
         return;
     }
 
@@ -601,7 +646,7 @@ void handleNoFlightsView() {
     if (needsRedraw) {
         drawNoFlightsView();
         needsRedraw = false;
-        // Serial.println("[VIEW] NO FLIGHTS redraw");
+        Serial.println("[VIEW] NO FLIGHTS redraw");
     }
 }
 
@@ -739,7 +784,7 @@ void executeResetAll() {
     // 機体情報キャッシュ・残りリクエスト数（cache.json）を消去
     clearCache();
 
-    // Serial.println("[RESET] All settings cleared. Restarting...");
+    Serial.println("[RESET] All settings cleared. Restarting...");
 
     // 再起動の予告を表示（利用者に処理中であることを伝えるため、表示秒数とdelay()を一致させる）
     drawLoadingScreen("Restarting in 3 seconds");

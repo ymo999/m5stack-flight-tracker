@@ -29,7 +29,7 @@ static const char* CACHE_PATH  = "/cache.json";
 // ストレージ機能の初期化（LittleFSのマウントのみ。Preferencesは使用時にbegin/endする）
 bool initStorage() {
     if (!LittleFS.begin()) {
-        // Serial.println("LittleFS mount failed");
+        Serial.println("LittleFS mount failed");
         return false;
     }
     return true;
@@ -140,7 +140,7 @@ bool saveConfig(const ConfigData& config) {
 
     File file = LittleFS.open(CONFIG_PATH, "w");
     if (!file) {
-        // Serial.println("Failed to open config.json for writing");
+        Serial.println("Failed to open config.json for writing");
         return false;
     }
     file.print(newJson);
@@ -157,8 +157,8 @@ bool loadConfig(ConfigData& config) {
     config.gateway = "";
     config.subnet = "";
     config.dns = "";
-    config.lat = 0.0;
-    config.lng = 0.0;
+    config.lat = LOCATION_UNSET;
+    config.lng = LOCATION_UNSET;
     config.scanRange = "NARROW";
 
     File file = LittleFS.open(CONFIG_PATH, "r");
@@ -171,7 +171,7 @@ bool loadConfig(ConfigData& config) {
     file.close();
 
     if (error) {
-        // Serial.println("Failed to parse config.json");
+        Serial.println("Failed to parse config.json");
         return false;
     }
 
@@ -182,8 +182,8 @@ bool loadConfig(ConfigData& config) {
     config.gateway = doc["gateway"] | "";
     config.subnet = doc["subnet"] | "";
     config.dns = doc["dns"] | "";
-    config.lat = doc["lat"] | 0.0;
-    config.lng = doc["lng"] | 0.0;
+    config.lat = doc["lat"] | LOCATION_UNSET;
+    config.lng = doc["lng"] | LOCATION_UNSET;
     config.scanRange = doc["scanRange"] | "NARROW";
 
     return true;
@@ -249,7 +249,7 @@ bool saveCache(const FlightData flights[], int flightCount, int remainingRequest
     // cache.jsonは差分チェックは行わない（毎回差分が発生するため差分チェックの意味がない）
     File file = LittleFS.open(CACHE_PATH, "w");
     if (!file) {
-        // Serial.println("Failed to open cache.json for writing");
+        Serial.println("Failed to open cache.json for writing");
         return false;
     }
     serializeJson(doc, file);
@@ -275,7 +275,7 @@ bool loadCache(FlightData flights[], int& flightCount, int& remainingRequests, S
     file.close();
 
     if (error) {
-        // Serial.println("Failed to parse cache.json");
+        Serial.println("Failed to parse cache.json");
         flightCount = 0;
         lastUpdateTime = "--/-- --:--";
         return false;
@@ -326,7 +326,7 @@ bool loadRemainingRequests(int& remainingRequests) {
     file.close();
 
     if (error) {
-        // Serial.println("Failed to parse cache.json");
+        Serial.println("Failed to parse cache.json");
         remainingRequests = 0;
         return false;
     }

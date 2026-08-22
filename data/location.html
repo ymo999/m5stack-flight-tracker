@@ -3,14 +3,269 @@
 filename : location.html
 description : 基準地点設定ページ - Base Point Setup Page (Leaflet Map)
 created : 2026-08-07
-update : 
+update : 2026-08-22
 -->
 <html lang="ja">
 <head>
-	<meta charset="UTF-8">
-	<title>Location Setup</title>
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>基準地点設定</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        /* ============================================================
+           トークン定義（wifi.html・api_key.htmlと共通のデザイントークン）
+           ============================================================ */
+        :root {
+            --bg: #0B1220;
+            --panel-border: #223049;
+            --amber: #F5A623;
+            --text: #E8EDF4;
+            --text-muted: #7C8AA0;
+            --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, "Hiragino Sans", "Yu Gothic", sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-display);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ============================================================
+           ページ本体
+           ============================================================ */
+        .panel {
+            width: 100%;
+            max-width: 420px;
+        }
+        .eyebrow {
+            font-size: 12px;
+            color: var(--text-muted);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            margin: 0 0 4px;
+        }
+        .title {
+            font-size: 22px;
+            font-weight: 700;
+            margin: 0 0 20px;
+        }
+
+        /* ============================================================
+           地図（(A)地図プロット）
+           ============================================================ */
+        #map {
+            width: 100%;
+            height: 60vh;          /* 画面の縦幅に応じて拡大 */
+            max-height: 420px;     /* PC等、縦に長い画面での肥大化を防ぐ */
+            min-height: 280px;     /* 極端に低い画面でも操作性を確保 */
+            border-radius: 8px;
+            border: 1px solid var(--panel-border);
+            margin-bottom: 18px;
+        }
+        .map-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: -12px 0 18px;
+            line-height: 1.5;
+        }
+
+        /* ============================================================
+           数値入力欄（(B))直接入力）
+           ============================================================ */
+        .field { margin-bottom: 18px; }
+        .field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--text-muted);
+            margin-bottom: 7px;
+            text-transform: uppercase;
+        }
+        input[type="number"] {
+            width: 100%;
+            background: #0D1626;
+            border: 1px solid var(--panel-border);
+            color: var(--text);
+            font-family: var(--font-mono);
+            font-size: 14px;
+            padding: 11px 12px;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.15s ease;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+        input[type="number"]:focus {
+            border-color: var(--amber);
+            box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.18);
+        }
+
+        /* ============================================================
+           送信ボタン
+           ============================================================ */
+        button {
+            width: 100%;
+            background: var(--amber);
+            color: #1A1206;
+            font-family: var(--font-display);
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            border: none;
+            border-radius: 8px;
+            padding: 13px;
+            cursor: pointer;
+            transition: filter 0.15s ease;
+        }
+        button:hover { filter: brightness(1.08); }
+        button:active { filter: brightness(0.94); }
+        button:focus-visible {
+            outline: 2px solid var(--amber);
+            outline-offset: 2px;
+        }
+    </style>
 </head>
 <body>
+    <div class="panel">
+        <p class="eyebrow">M5Stack Flight Tracker</p>
+        <h1 class="title">基準地点設定</h1>
+
+        <form id="locationForm" action="/set" method="GET">
+
+            <!-- (A)地図プロット：タップ、またはピンのドラッグで地点を指定 -->
+            <div id="map"></div>
+            <p class="map-hint">地図をタップ、またはピンをドラッグして地点を指定できます</p>
+
+            <!-- (B)直接入力：緯度・経度を数値で指定（地図の操作と相互に連動） -->
+            <div class="field">
+                <label for="lat">緯度</label>
+                <input type="number" id="lat" name="lat" step="any" min="-90" max="90" value="35.681236" required>
+            </div>
+            <div class="field">
+                <label for="lon">経度</label>
+                <input type="number" id="lon" name="lon" step="any" min="-180" max="180" value="139.767125" required>
+            </div>
+
+            <button type="submit">この地点をM5Stackに送信</button>
+        </form>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // ============================================================
+        // 初期表示地点の候補
+        // 未登録時（LOCATION_UNSETに対応する9999）は東京駅、
+        // 登録済みの場合は/location_currentから取得した値を使う
+        // ============================================================
+        const TOKYO_STATION_LAT = 35.681236;
+        const TOKYO_STATION_LON = 139.767125;
+        const LOCATION_UNSET = 9999;        // storage_handler.h の LOCATION_UNSET と一致させること
+
+        let map;
+        let marker;
+
+        // ============================================================
+        // 地図の初期化とマーカーの配置
+        // ============================================================
+        function initMap(lat, lon) {
+            map = L.map("map").setView([lat, lon], 15);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "&copy; OpenStreetMap contributors",
+            }).addTo(map);
+
+            marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+
+            // (A)地図タップで地点を指定
+            map.on("click", (e) => {
+                syncLocation(e.latlng.lat, e.latlng.lng, false);
+            });
+
+            // (A)マーカーのドラッグで地点を指定
+            marker.on("dragend", () => {
+                const pos = marker.getLatLng();
+                syncLocation(pos.lat, pos.lng, false);
+            });
+
+            // (A)画面回転・ウィンドウリサイズ時に地図のサイズを再計算する
+            // （Leafletはコンテナのサイズ変化を自動検知しないため必要）
+            window.addEventListener("resize", () => {
+                map.invalidateSize();
+            });
+        }
+
+        // ============================================================
+        // 緯度経度の同期処理（(B)数値入力・(A)地図の相互連動の中心）
+        // skipInputs : true の場合は数値入力欄への書き戻しを行わない
+        //              （(B)の入力欄自身の編集から呼ばれた場合、カーソル位置の
+        //               リセットや無限ループを避けるため）
+        // ============================================================
+        function syncLocation(lat, lon, skipInputs) {
+            if (!skipInputs) {
+                document.getElementById("lat").value = lat;
+                document.getElementById("lon").value = lon;
+            }
+            marker.setLatLng([lat, lon]);
+        }
+
+        // ------------------------------------------------------
+        // (B)数値入力欄の直接編集で地図側（マーカー位置）を更新
+        // 範囲外・非数値の間、および地図初期化前（fetch未完了）は何もしない
+        // ------------------------------------------------------
+        function onManualInputChange() {
+            if (!marker) return;
+
+            const lat = parseFloat(document.getElementById("lat").value);
+            const lon = parseFloat(document.getElementById("lon").value);
+
+            if (!isNaN(lat) && lat >= -90 && lat <= 90 &&
+                !isNaN(lon) && lon >= -180 && lon <= 180) {
+                syncLocation(lat, lon, true);
+                map.panTo([lat, lon]);
+            }
+        }
+        document.getElementById("lat").addEventListener("input", onManualInputChange);
+        document.getElementById("lon").addEventListener("input", onManualInputChange);
+
+        // ------------------------------------------------------
+        // 送信前バリデーション（範囲外・非数値の場合は送信を中止）
+        // ------------------------------------------------------
+        document.getElementById("locationForm").addEventListener("submit", (event) => {
+            const lat = parseFloat(document.getElementById("lat").value);
+            const lon = parseFloat(document.getElementById("lon").value);
+
+            if (isNaN(lat) || lat < -90 || lat > 90 ||
+                isNaN(lon) || lon < -180 || lon > 180) {
+                event.preventDefault();
+                alert("緯度は-90〜90、経度は-180〜180の範囲で入力してください");
+            }
+        });
+
+        // ============================================================
+        // 登録済み基準地点の取得と初期表示の決定
+        // 取得できない場合（通信エラー等）は東京駅のまま進める
+        // ============================================================
+        fetch("/location_current")
+            .then((res) => res.json())
+            .then((data) => {
+                const isRegistered = data.lat !== LOCATION_UNSET && data.lng !== LOCATION_UNSET;
+                const lat = isRegistered ? data.lat : TOKYO_STATION_LAT;
+                const lon = isRegistered ? data.lng : TOKYO_STATION_LON;
+                initMap(lat, lon);
+                syncLocation(lat, lon, false);
+            })
+            .catch(() => {
+                initMap(TOKYO_STATION_LAT, TOKYO_STATION_LON);
+                syncLocation(TOKYO_STATION_LAT, TOKYO_STATION_LON, false);
+            });
+    </script>
 </body>
 </html>

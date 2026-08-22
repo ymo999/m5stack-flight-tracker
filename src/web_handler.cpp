@@ -5,6 +5,7 @@
 
 #include "web_handler.h"
 
+#include <ArduinoJson.h>                                // 基準地点登録後のJSON生成のため
 #include <LittleFS.h>
 #include <WebServer.h>
 #include <WiFi.h>
@@ -129,7 +130,9 @@ void handleSave() {
 void startConfigServer() {
     server.on("/api_key", HTTP_GET, handleApiKeyPage);
     server.on("/api_key", HTTP_POST, handleApiKeySave);
-    // 基準地点設定ページ（"/location"）のルートは手順28で追加する
+    server.on("/location_current", HTTP_GET, handleLocationCurrent);
+    server.on("/location", HTTP_GET, handleLocationPage);
+    server.on("/set", HTTP_GET, handleLocationSave);
 
     server.begin();
     configServerActive = true;
@@ -192,4 +195,75 @@ void handleApiKeySave() {
     } else {
         streamHtmlFile("/api_key_error.html");
     }
+}
+
+// ============================================================
+// 登録済み基準地点の取得（GET "/location_current"）
+// location.htmlの初期表示（東京駅／登録済みの値）の判定に使用する
+// ============================================================
+void handleLocationCurrent() {
+    ConfigData config;
+    loadConfig(config);                             // 未登録時はLOCATION_UNSETのまま
+
+    JsonDocument doc;
+    doc["lat"] = config.lat;
+    doc["lng"] = config.lng;
+
+    String json;
+    serializeJson(doc, json);
+    server.send(200, "application/json", json);
+}
+
+// ============================================================
+// 基準地点設定ページの配信（GET "/location"）
+// ============================================================
+void handleLocationPage() {
+    streamHtmlFile("/location.html");
+}
+
+// ============================================================
+// 基準地点の受信・バリデーション・保存（GET "/set"）
+// ============================================================
+void handleLocationSave() {
+    // ------------------------------------------------------
+    // 1. 必須項目（緯度・経度）の受信・チェック
+    // ------------------------------------------------------
+    String latStr = server.arg("lat");
+    String lonStr = server.arg("lon");
+
+    if (latStr.length() == 0 || lonStr.length() == 0) {
+        streamHtmlFile("/location_error.html");
+        Serial.println("[LOCATION] handleLocationSave() failed() (no input)");
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 2. 数値変換・範囲チェック
+    //    緯度は-90〜90、経度は-180〜180の範囲外の場合は失敗として扱う
+    // ------------------------------------------------------
+    double lat = latStr.toDouble();
+    double lon = lonStr.toDouble();
+
+    if (lat < -90.0 || lat > 90.0 || lon < -180.0 || lon > 180.0) {
+        streamHtmlFile("/location_error.html");
+        Serial.println("[LOCATION] handleLocationSave() failed() (invalid values)");
+        return;
+    }
+
+    // ------------------------------------------------------
+    // 3. 保存（config.json）
+    //    既存の静的IP設定・SCAN RANGEを保持するため、
+    //    読み込み→緯度経度のみ上書き→保存の手順を踏む
+    // ------------------------------------------------------
+    ConfigData config;
+    loadConfig(config);
+
+    config.lat = lat;
+    config.lng = lon;
+
+    saveConfig(config);
+
+    qrSetupCompleted = true;
+    streamHtmlFile("/location_success.html");
+    Serial.printf("[LOCATION] Base Point saved. lat: %f, lng: %f\n", lat, lon);
 }
