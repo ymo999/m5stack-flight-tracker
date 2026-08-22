@@ -4,14 +4,12 @@
 #include <WebServer.h>
 #include <WiFi.h>
 
-#include "api_handler.h"                // テストコード用（APIリクエスト、JSONパース）
-#include "error_data.h"                 // テストコード用（エラー画面確認用）
 #include "flight_data.h"
 #include "input_handler.h"
 #include "state_machine.h"
 #include "storage_handler.h"
 #include "system_status.h"              // 物理ボタンを持たない機種にチャタリング防止措置を適用させるため
-#include "ui_handler.h"                 // テストコード用（最終更新日時整形）
+#include "ui_handler.h"                 // 接続中画面の描画（drawLoadingScreen()）のため
 #include "web_handler.h"
 #include "wifi_handler.h"
 
@@ -102,72 +100,6 @@ void setup() {
         Serial.print(WiFi.localIP().toString());
         Serial.println(")");
     }
-
-    // ★★★一時テストコード↓ここから
-    // ※基準地点の登録状況による起動時分岐の実装完了まで、暫定的に
-    // 　ここで基準地点を仮登録し、機体情報を取得してMODE_FLIGHT_VIEWへ遷移させる
-    // ※initStateMachine()はWi-Fi接続成功時にcurrentModeを変更しないため、
-    //   このブロック内で必ずcurrentModeを設定すること
-    //  （設定しないとMODE_WIFI_SETUPのまま残り意図せず接続失敗画面が描画される）
-    // ※Wi-Fi未接続時はinitStateMachine()が既にMODE_WIFI_SETUPを設定しているため、
-    // 　このブロック全体を実行しない（実行するとその判定結果を上書きしてしまう）
-    if (isWiFiConnected()) {
-
-        // 基準地点の設定（実装までの代替措置）
-        ConfigData config;
-        loadConfig(config);
-        config.lat = 35.681236;                     // 東京駅の緯度（テスト用）
-        config.lng = 139.767125;                    // 東京駅の経度（テスト用）
-        // config.lat = 0;                              // ヌル島の緯度（機体0件テスト用）
-        // config.lng = 0;                              // ヌル島の経度（機体0件テスト用）
-        saveConfig(config);
-        Serial.println("[LOCATION] Base Point saved");
-
-        // 最終更新日時の取得と整形
-        struct tm timeInfo;
-        if (syncTime(timeInfo)) {
-            lastUpdateTime = formatUpdateTime(timeInfo);
-        }
-
-        // APIリクエスト送信・JSONパース        
-        unsigned long startTime = millis();                         // ここから計測（JSONパース）
-        String rawJson;
-        int testRemainingRequests = 0;                              // 一時テストコード用に定義
-        ErrorData parseError;                                       // 一時テストコード用に定義
-        if (fetchFlightsRaw(rawJson)) {
-            Serial.println("[BOOT] fetchFlightsRaw() done");
-            if (parseFlightsResponse(rawJson, foundFlights, totalFlightCount, testRemainingRequests, parseError))
-            {
-                unsigned long elapsed = millis() - startTime;       // ここまで計測（JSONパース）
-                Serial.printf("[BOOT] Fetch+Parse time: %lu ms, flights: %d, remainingRequests: %d\n", elapsed, totalFlightCount, testRemainingRequests);
-            } else {
-                Serial.println("[BOOT] parseFlightsResponse() failed");
-            }
-        } else {
-            Serial.println("[BOOT] fetchFlightsRaw() failed");
-        }
-
-        // 画面遷移テスト用
-        bool errorTest = false;                                     // テストの内容に応じてtrue/false切替
-
-        // 次画面遷移
-        if (errorTest) {
-            // エラー画面の表示確認用
-            currentError.message = "Missing api_key";
-            currentError.code = "wrong_params";
-            currentMode = MODE_ERROR_VIEW;
-        } else {
-            if (totalFlightCount > 0) {
-                currentMode = MODE_FLIGHT_VIEW;
-            } else {
-                // 手順23実装により、機体0件画面へ直接遷移させる
-                currentMode = MODE_NO_FLIGHTS_VIEW;
-            }
-        }
-        needsRedraw = true;
-    }
-    // ★★★一時テストコード↑ここまで
-
 }
 
 void loop() {

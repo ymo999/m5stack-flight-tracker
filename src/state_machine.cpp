@@ -41,6 +41,10 @@ WiFiSetupCaller wifiSetupCaller = WIFI_CALLER_NONE;
 // MODE_QR_VIEW以外の状態では意味を持たないため、初期値はQR_TARGET_NONEとする
 QrTarget qrTarget = QR_TARGET_NONE;
 
+// QRコード誘導画面の遷移元の実体
+// MODE_QR_VIEW以外の状態では意味を持たないため、初期値はQR_CALLER_NONEとする
+QrCaller qrCaller = QR_CALLER_NONE;
+
 // 画面の再描画が必要かどうかを示すフラグの実体
 // 起動直後は必ず1回描画するため、初期値はtrueとする
 bool needsRedraw = true;
@@ -69,18 +73,44 @@ void initStateMachine() {
         wifiSetupPhase = WIFI_PHASE_GUIDE;
         wifiSetupCaller = WIFI_CALLER_INIT;
     } else if (isWiFiConnected()) {
-        // 資格情報あり・接続成功：currentModeはここでは変更しない
-        // TODO : APIキー・基準地点の登録状況による分岐実装
-        // （実装までは呼び出し元のmain.cppの一時テストコードでcurrentModeを設定）
-        Serial.println("[INIT] Wi-Fi connected. currentMode will be set by the caller (temporary)");
+        // 資格情報あり・接続成功：APIキー・基準地点の登録状況により分岐する
+        String apiKey;
+        bool hasApiKey = loadApiKey(apiKey);
+
+        ConfigData config;
+        loadConfig(config);
+        bool hasLocation = (config.lat != LOCATION_UNSET && config.lng != LOCATION_UNSET);
+
+        if (!hasApiKey) {
+            // APIキー未登録：登録フローへ（初回起動扱い、BACKボタンなし）
+            qrTarget = QR_TARGET_API_KEY;
+            qrCaller = QR_CALLER_INIT;
+            qrSetupCompleted = false;
+            startConfigServer();
+            currentMode = MODE_QR_VIEW;
+            Serial.println("[INIT] No API key has been registered");
+        } else if (!hasLocation) {
+            // 基準地点未登録：登録フローへ（初回起動扱い、BACKボタンなし）
+            qrTarget = QR_TARGET_LOCATION;
+            qrCaller = QR_CALLER_INIT;
+            qrSetupCompleted = false;
+            startConfigServer();
+            currentMode = MODE_QR_VIEW;
+            Serial.println("[INIT] No base point has been registered");
+        } else {
+            // 両方登録済み：機体情報取得へ（Wi-Fiは起動時から既にONのため追加の接続処理は不要）
+            currentMode = MODE_LOADING;
+            Serial.println("[INIT] Both API key and base point had already been registered");
+        }
     } else {
-        // 資格情報はあるが接続失敗
+        // 接続失敗
         currentMode = MODE_WIFI_SETUP;
         wifiSetupPhase = WIFI_PHASE_FAILED;
+        Serial.println("[INIT] Wi-Fi connection failed.");
     }
     
     needsRedraw = true;
-    Serial.printf("[INIT] initStateMachine() done. currentMode = %d\n", currentMode);
+    Serial.printf("[INIT] initStateMachine() done. currentMode: %d, qrTarget: %d, qrCaller: %d\n", currentMode, qrTarget, qrCaller);
 }
 
 // ============================================================
@@ -227,7 +257,7 @@ void handleMenuView() {
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
     // ------------------------------------------------------
-    // // デバッグ用変数
+    // デバッグ用変数
     int targetOrCaller = 0;
 
     if (btnAWasPressed()) {
@@ -269,6 +299,8 @@ void handleMenuView() {
 
                 if (tryConnectWiFi()) {
                     qrTarget = QR_TARGET_LOCATION;
+                    qrCaller = QR_CALLER_SETTINGS;
+                    targetOrCaller = qrTarget;
                     qrSetupCompleted = false;               // 登録成否フラグの初期化（登録成功後の画面遷移判定用）
                     startConfigServer();
                     currentMode = MODE_QR_VIEW;
@@ -288,6 +320,8 @@ void handleMenuView() {
 
                 if (tryConnectWiFi()) {
                     qrTarget = QR_TARGET_API_KEY;
+                    qrCaller = QR_CALLER_SETTINGS;
+                    targetOrCaller = qrTarget;
                     qrSetupCompleted = false;               // 登録成否フラグの初期化（登録成功後の画面遷移判定用）
                     startConfigServer();
                     currentMode = MODE_QR_VIEW;
@@ -414,14 +448,42 @@ void handleScanRangeView() {
 void handleQrView() {
     // ------------------------------------------------------
     // 保存完了検知（毎回実行）
-    // 設定用Webページ側で保存が成功すると、qrSetupCompletedがtrueになる
-    // BACKボタン押下時と同じ後処理を行い、SETTINGSへ自動遷移する
+    // 設定用Webページ側で保存が成功すると、qrSetupCompletedがtrueになりこの関数が呼び出される
+    // その後は、遷移元（qrCaller）により遷移先画面が異なる
+    // ・起動シーケンスからのQR_VIEWで保存成功...次の未設定項目QR_VIEWまたはLOADING_VIEW
+    // ・SETTINGSからのQR_VIEWで保存成功...SETTINGSへ自動遷移（BACKボタン押下と同じ）
     // ------------------------------------------------------
     if (qrSetupCompleted) {
+        qrSetupCompleted = false;
+
+        // 起動フローからの呼び出し
+        if (qrCaller == QR_CALLER_INIT) {
+            if (qrTarget == QR_TARGET_API_KEY) {
+                // APIキー完了なら続けて基準地点登録へ連鎖させる
+                // （設定用Webサーバーは両ページのルートを既に登録済みのため停止・再起動は不要）
+                qrTarget = QR_TARGET_LOCATION;
+                needsRedraw = true;
+                Serial.println("[QR] API key done (INIT). Continue to LOCATION.");
+                return;
+            } else {
+                // 基準地点完了：機体情報取得（MODE_LOADING）へ連鎖させる
+                // Wi-Fiは接続したまま渡す（handleLoadingView()側で管理する）
+                stopConfigServer();
+                qrTarget = QR_TARGET_NONE;
+                qrCaller = QR_CALLER_NONE;
+                currentMode = MODE_LOADING;
+                needsRedraw = true;
+                Serial.println("[QR] Location done (INIT). Proceed to fetch flight data.");
+                return;
+            }
+        }
+
+        // SETTINGSからの呼び出し
+        // SETTINGSへ自動遷移、Wi-Fi接続は必要なくなるのでOFFに戻す
         stopConfigServer();
         disableWiFi();                                  // 低消費電力運用のため、通常時はWi-Fi OFFに戻す
         qrTarget = QR_TARGET_NONE;
-        qrSetupCompleted = false;
+        qrCaller = QR_CALLER_NONE;
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
         Serial.println("[QR] Setup completed. Auto-transition to SETTINGS.");
@@ -430,12 +492,14 @@ void handleQrView() {
 
     // ------------------------------------------------------
     // ボタン処理（毎回実行）
+    // 初回起動フロー（QR_CALLER_INIT）はBACKボタン非表示のため誤操作をスルーさせる
     // ------------------------------------------------------
-    if (btnAWasPressed()) {
+    if (btnAWasPressed() && qrCaller != QR_CALLER_INIT) {
         // BACK：設定用Webサーバーを停止し、設定メニュー画面へ戻る
         stopConfigServer();
         disableWiFi();                                  // 低消費電力運用のため、通常時はWi-Fi OFFに戻す
         qrTarget = QR_TARGET_NONE;
+        qrCaller = QR_CALLER_NONE;
         currentMode = MODE_MENU_VIEW;
         needsRedraw = true;
         Serial.printf("[BTN] BtnA wasPressed. currentMode = %d\n", currentMode);
@@ -445,11 +509,17 @@ void handleQrView() {
     // ------------------------------------------------------
     // 描画処理（needsRedrawがtrueの時のみ実行）
     // qrTargetに応じて表示内容を出し分ける
+    // ・QR_TARGET_API_KEY → APIキー登録画面誘導QRコード
+    // ・QR_TARGET_LOCATION → 基準地点登録画面誘導QRコード
+    // qrCallerに応じてボタンラベルを出し分ける
+    // ・QR_CALLER_INIT → BACKボタンラベル非表示
+    // ・QR_CALLER_SETTINGS → BACKボタンラベル表示
     // ------------------------------------------------------
     if (needsRedraw) {
+        const char* buttonLabel = (qrCaller == QR_CALLER_SETTINGS) ? "BACK" : nullptr;
         if (qrTarget == QR_TARGET_API_KEY) {
             drawSetupQRScreen("API KEY SETUP", "/api_key", nullptr,
-                              "Waiting for input...", "BACK");
+                              "Waiting for input...", buttonLabel);
         } else if (qrTarget == QR_TARGET_LOCATION) {
             // 現在登録済みの基準地点を画面に表示する（未登録時はLOCATION_UNSET）
             ConfigData config;
@@ -463,7 +533,7 @@ void handleQrView() {
             }
 
             drawSetupQRScreen("LOCATION SETUP", "/location", currentLoc.c_str(),
-                            "Waiting for input...", "BACK");
+                            "Waiting for input...", buttonLabel);
         } else {
             Serial.println("[VIEW] QR target undefined");
         }

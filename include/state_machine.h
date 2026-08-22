@@ -237,4 +237,22 @@ enum QrTarget {
  */
 extern QrTarget qrTarget;
 
+/**
+ * @brief QRコード誘導画面の遷移元（BACKの有無・登録完了後の遷移先の決定に使用）
+ *
+ * WiFiSetupCaller・MenuCallerと同じ考え方を踏襲する
+ */
+enum QrCaller {
+    QR_CALLER_NONE,                         ///< MODE_QR_VIEW以外の状態では意味を持たない
+    QR_CALLER_INIT,                         ///< 初回起動時の登録フローから → BACKボタンなし、完了後は次の未登録項目、または（両方登録済みなら）MODE_LOADINGへ連鎖する
+    QR_CALLER_SETTINGS                      ///< SETTINGSから → BACK: MENU_VIEW。完了後もMENU_VIEWへ戻る
+};
+
+/**
+ * @brief state_machine.cpp で定義されている、QRコード誘導画面の遷移元を共有する
+ *
+ * @note MODE_QR_VIEW以外の状態では意味を持たない（QR_CALLER_NONEを想定）
+ */
+extern QrCaller qrCaller;
+
 #endif
