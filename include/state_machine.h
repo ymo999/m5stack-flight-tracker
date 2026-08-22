@@ -53,8 +53,11 @@ extern int cursorIndex;
 
 /**
  * @brief 状態管理機構の初期化（起動時の初期状態を設定する）
+ *
+ * @param hasCache 起動時にloadCache()で機体情報キャッシュが読み込めたかどうか
+ *                 （true: キャッシュあり→APIリクエストを省略、false: キャッシュなし→従来通りMODE_LOADINGへ）
  */
-void initStateMachine();
+void initStateMachine(bool hasCache);
 
 /**
  * @brief 現在の画面状態（currentMode）に応じて、対応するハンドラ関数を呼び出す

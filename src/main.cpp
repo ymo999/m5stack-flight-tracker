@@ -63,8 +63,8 @@ void setup() {
     // 起動時にキャッシュを復元する
     // （接続失敗画面のボタン出し分け等でtotalFlightCountを参照するため）
     int remainingRequests = 0;
-    loadCache(foundFlights, totalFlightCount, remainingRequests, lastUpdateTime);
-    Serial.printf("[BOOT] loadCache() done. flights: %d, remainingRequests: %d\n", totalFlightCount, remainingRequests);
+    bool hasCache = loadCache(foundFlights, totalFlightCount, remainingRequests, lastUpdateTime);
+    Serial.printf("[BOOT] loadCache() done. hasCache: %d, flights: %d, remainingRequests: %d\n", hasCache, totalFlightCount, remainingRequests);
 
     // Wi-Fi接続には最大60秒かかるため、処理中であることを画面に示す
     // （再起動を挟む方式のため、この間に描画がないと無反応に見えてしまう）
@@ -87,7 +87,7 @@ void setup() {
     // ↑ ここまで
     Serial.println("[BOOT] initWiFi() done");
 
-    initStateMachine();
+    initStateMachine(hasCache);
     Serial.println("[BOOT] initStateMachine() done");
 
     updateBatteryLevel();

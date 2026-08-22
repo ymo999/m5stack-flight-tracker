@@ -66,7 +66,7 @@ void executeResetAll();                     // RESET ALL実行処理のため、
 // ============================================================
 // 状態管理機構の初期化
 // ============================================================
-void initStateMachine() {
+void initStateMachine(bool hasCache) {
     if (isApModeActive()) {
         // 資格情報なし：initWiFi()内で既にアクセスポイント起動済→登録案内画面表示
         currentMode = MODE_WIFI_SETUP;
@@ -97,8 +97,14 @@ void initStateMachine() {
             startConfigServer();
             currentMode = MODE_QR_VIEW;
             Serial.println("[INIT] No base point has been registered");
+        } else if (hasCache) {
+            // 両方登録済み・キャッシュあり：APIリクエストを省略し、キャッシュ済みデータをそのまま表示する
+            disableWiFi();                          // 通信不要のため、表示フローに入る前にWi-Fiを切断する
+            currentDisplayIndex = 0;                // 1機目から表示する
+            currentMode = (totalFlightCount > 0) ? MODE_FLIGHT_VIEW : MODE_NO_FLIGHTS_VIEW;
+            Serial.println("[INIT] Cache found. Skipping API request");
         } else {
-            // 両方登録済み：機体情報取得へ（Wi-Fiは起動時から既にONのため追加の接続処理は不要）
+            // 両方登録済み・キャッシュなし：機体情報取得へ（Wi-Fiは起動時から既にONのため追加の接続処理は不要）
             currentMode = MODE_LOADING;
             Serial.println("[INIT] Both API key and base point had already been registered");
         }
