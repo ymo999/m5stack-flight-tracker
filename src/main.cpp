@@ -19,17 +19,17 @@ void setup() {
     Serial.begin(115200);
     
     // ===== 調査用一時コード（ここから） =====
-    // USB CDC接続の確立を待つための待機
-    // モニターが安定接続する前のログ欠落を防ぐための調査用処置
-    // USB未接続時にはMAX秒数待機してしまうため、デバッグ時以外はコメントアウトすること
+    // // USB CDC接続の確立を待つための待機
+    // // モニターが安定接続する前のログ欠落を防ぐための調査用処置
+    // // USB未接続時にはMAX秒数待機してしまうため、デバッグ時以外はコメントアウトすること
 
-    // ミリ秒単位で時間を測定
-    uint32_t serialWaitStartTime = millis();
+    // // ミリ秒単位で時間を測定
+    // uint32_t serialWaitStartTime = millis();
     
-    // 「シリアル未準備」かつ「開始から指定秒数以内」の間ループする
-    while (!Serial && (millis() - serialWaitStartTime < 5000)) {
-        delay(100);                         // 接続を待つ
-    }
+    // // 「シリアル未準備」かつ「開始から指定秒数以内」の間ループする
+    // while (!Serial && (millis() - serialWaitStartTime < 5000)) {
+    //     delay(100);                         // 接続を待つ
+    // }
     // ===== 調査用一時コード（ここまで） =====
 
     Serial.println("[BOOT] Serial initialized");
