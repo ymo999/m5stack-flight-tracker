@@ -1,17 +1,17 @@
 # M5Stack 航空機スキャンシステム
 
-![Platform](https://img.shields.io/badge/platform-M5Stack%20Basic-000000)
-![Platform](https://img.shields.io/badge/platform-M5Stack%20CoreS3-000000)
-![Language](https://img.shields.io/badge/language-C%2B%2B-00599C)
-![Framework](https://img.shields.io/badge/framework-Arduino-00979D)
-![Build](https://img.shields.io/badge/build-PlatformIO-FF7F00)
-![API](https://img.shields.io/badge/API-AirLabs-2E8B57)
-![Status](https://img.shields.io/badge/status-in%20development-yellow)
-![AI Assisted](https://img.shields.io/badge/development-AI%20assisted-9cf)
+[![Platform](https://img.shields.io/badge/platform-M5Stack%20Basic-000000)]
+[![Platform](https://img.shields.io/badge/platform-M5Stack%20CoreS3-000000)]
+[![Language](https://img.shields.io/badge/language-C%2B%2B-00599C)]
+[![Framework](https://img.shields.io/badge/framework-Arduino-00979D)]
+[![Build](https://img.shields.io/badge/build-PlatformIO-FF7F00)]
+[![API](https://img.shields.io/badge/API-AirLabs-2E8B57)]
+[![Status](https://img.shields.io/badge/status-released-brightgreen)]
+[![AI Assisted](https://img.shields.io/badge/development-AI%20assisted-9cf)]
 
 M5Stack（ESP32）を使用し、指定した地点の周辺を飛行中の航空機情報を取得・表示する個人開発ガジェットです。
 
-🧪 **テスト中**：基本機能の実装を終え、現在は実機での動作確認・テストを進めています。実際に使いながら、必要に応じて修正・改善を行っています。
+✅ **リリース済み**：結合テストを完了し、実機（M5Stack Basic／CoreS3）での動作確認済みです。
 
 ---
 
@@ -39,11 +39,11 @@ M5Stack（ESP32）を使用し、指定した地点の周辺を飛行中の航�
 
 ## 動作環境
 
-| 項目 | 内容 |
-|---|---|
-| 対象デバイス | M5Stack Basic |
-| 開発環境 | VS Code + PlatformIO |
-| フレームワーク | Arduino |
+| 項目      | 内容                     |
+| ------- | ---------------------- |
+| 対象デバイス  | M5Stack Basic／CoreS3   |
+| 開発環境    | VS Code + PlatformIO   |
+| フレームワーク | Arduino                |
 | 主要ライブラリ | M5Unified, ArduinoJson |
 
 ---
@@ -80,6 +80,7 @@ Your-Project-Folder/
 └── docs/                // 仕様書・設計資料
 ```
 
+
 詳細な仕様は `docs/` 内の「プロジェクト仕様書」を参照してください。
 
 ---
@@ -98,11 +99,7 @@ AIの助言はあくまで参考情報であり、実機での動作確認・最
 
 ## ステータス
 
-基本機能の実装を終え、現在は実機での動作確認・テストを進めています。
-
-実際の利用環境で動作を確認しながら、不具合の修正や使い勝手の改善、必要に応じた仕様の調整を行っています。
-
-まだ正式リリース前のテスト段階のため、今後のテスト結果によって仕様や実装が変更される場合があります。
+結合テスト（全6シナリオ）をM5Stack Basic・CoreS3の両実機で完了し、納品済みです。今後、テストコード・デバッグコードの本格的な整理を別ブランチで予定しています。
 
 ---
 
@@ -111,6 +108,7 @@ AIの助言はあくまで参考情報であり、実機での動作確認・最
 未定（個人開発プロジェクトのため、現時点では非公開/検討中）
 
 ---
+
 ## データ出典およびライセンスについて
 
 本アプリのデータベースに登録されている航空会社コード（IATA/ICAOコード）は、以下の公的機関・業界団体が公開している「客観的な事実データ」を手動で集計・検証したものです。
