@@ -1,13 +1,13 @@
 # M5Stack 航空機スキャンシステム
 
-[![Platform](https://img.shields.io/badge/platform-M5Stack%20Basic-000000)]
-[![Platform](https://img.shields.io/badge/platform-M5Stack%20CoreS3-000000)]
-[![Language](https://img.shields.io/badge/language-C%2B%2B-00599C)]
-[![Framework](https://img.shields.io/badge/framework-Arduino-00979D)]
-[![Build](https://img.shields.io/badge/build-PlatformIO-FF7F00)]
-[![API](https://img.shields.io/badge/API-AirLabs-2E8B57)]
-[![Status](https://img.shields.io/badge/status-released-brightgreen)]
-[![AI Assisted](https://img.shields.io/badge/development-AI%20assisted-9cf)]
+![Platform](https://img.shields.io/badge/platform-M5Stack%20Basic-000000)
+![Platform](https://img.shields.io/badge/platform-M5Stack%20CoreS3-000000)
+![Language](https://img.shields.io/badge/language-C%2B%2B-00599C)
+![Framework](https://img.shields.io/badge/framework-Arduino-00979D)
+![Build](https://img.shields.io/badge/build-PlatformIO-FF7F00)
+![API](https://img.shields.io/badge/API-AirLabs-2E8B57)
+![Status](https://img.shields.io/badge/status-released-brightgreen)
+![AI Assisted](https://img.shields.io/badge/development-AI%20assisted-9cf)
 
 M5Stack（ESP32）を使用し、指定した地点の周辺を飛行中の航空機情報を取得・表示する個人開発ガジェットです。
 
