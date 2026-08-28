@@ -1,7 +1,6 @@
 # M5Stack 航空機スキャンシステム
 
 ![Platform](https://img.shields.io/badge/platform-M5Stack%20Basic-000000)
-![Platform](https://img.shields.io/badge/platform-M5Stack%20CoreS3-000000)
 ![Language](https://img.shields.io/badge/language-C%2B%2B-00599C)
 ![Framework](https://img.shields.io/badge/framework-Arduino-00979D)
 ![Build](https://img.shields.io/badge/build-PlatformIO-FF7F00)
@@ -11,7 +10,7 @@
 
 M5Stack（ESP32）を使用し、指定した地点の周辺を飛行中の航空機情報を取得・表示する個人開発ガジェットです。
 
-✅ **リリース済み**：結合テストを完了し、実機（M5Stack Basic／CoreS3）での動作確認済みです。
+✅ **リリース済み**：結合テストを完了し、実機（M5Stack Basic／CoreS3）での動作確認済みです。CoreS3対応は`v1.0.0`時点のものです（詳細は「動作環境」参照）。
 
 ---
 
@@ -41,10 +40,12 @@ M5Stack（ESP32）を使用し、指定した地点の周辺を飛行中の航�
 
 | 項目      | 内容                     |
 | ------- | ---------------------- |
-| 対象デバイス  | M5Stack Basic／CoreS3   |
+| 対象デバイス  | M5Stack Basic　         |
 | 開発環境    | VS Code + PlatformIO   |
 | フレームワーク | Arduino                |
 | 主要ライブラリ | M5Unified, ArduinoJson |
+
+※CoreS3は`v1.0.0`時点で動作確認済みです。以降`main`ブランチはBasic専用として開発しており、CoreS3での動作は保証していません。CoreS3で利用したい場合は[`cores3-v1.0.0`ブランチ](https://github.com/ymo999/m5stack-flight-tracker/tree/cores3-v1.0.0)をご利用ください。
 
 ---
 
@@ -116,7 +117,7 @@ AIの助言はあくまで参考情報であり、実機での動作確認・最
 
 ## ステータス
 
-結合テスト（全6シナリオ）をM5Stack Basic・CoreS3の両実機で完了し、納品済みです。今後、テストコード・デバッグコードの本格的な整理を別ブランチで予定しています。
+結合テスト（全6シナリオ）をM5Stack Basic・CoreS3の両実機で完了しリリース済です。今後の開発はM5Stack Basicを対象とし、CoreS3対応は`v1.0.0`（`cores3-v1.0.0`ブランチ）時点で固定しています。デバッグコードの整理を別ブランチで予定しています。
 
 ---
 
